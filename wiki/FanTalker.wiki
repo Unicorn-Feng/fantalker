@@ -1,0 +1,57 @@
+#labels Fanfou,Gtalk,AppEngine,xmpp,JAVA,robot,饭否,机器人
+==介绍==
+
+FanTalker是部署在Google App Engine云计算平台上的基于xmpp的Google Talk饭否机器人，使用JAVA开发。支持饭否的发送消息、查看时间线、回复消息等功能，更多功能即将上线。命令参考自[http://code.google.com/p/twitalkerplus/ TwitalkerPlus]和[http://code.google.com/p/fanfoutalk/ fanfoutalk]。
+
+
+==使用方法==
+
+在Google Talk客户端中添加 fantalker@appspot.com为好友，而后使用-oauth命令绑定账号。更多命令请输入-help获取帮助。
+
+
+==命令列表==
+
+所有命令均以-开头。若无-，则视为消息，fantalker机器人会自动将消息发送至绑定的饭否账号。
+
+  * -?/-h/-help： 显示本帮助 
+  * -ho/-home： 查看首页时间线 
+  * -@/-r-/-reply：查看提到我的消息及 回复消息
+  * -rt：转发消息
+  * -u： 查看用户信息
+  * -m/-msg： 查看指定消息
+  * -oauth： 开始OAuth认证
+  * -bind： 绑定PIN码完成认证
+  * -remove： 解除关联
+  * -help COMMAND: 显示COMMAND的具体帮助信息。
+
+
+==已实现功能==
+
+  * 通过OAuth方式绑定饭否账号。
+  * 发送消息
+  * 查看时间线
+  * 查看@提到我的消息
+  * 回复消息
+  * 转发消息
+  * 查看用户信息
+  * 查看指定消息
+
+
+==计划中的功能==
+
+  # 删除消息
+  # XAuth认证
+  # 关注与取消关注用户
+  # 定时提醒新的@提到我的消息
+  # 收藏消息
+  # 查看关注者及好友
+  # 发送、查看、删除私信
+  # 加入、删除黑名单
+
+
+==其他说明==
+
+本程序不保存用户的密码信息，仅保存OAuth后返回的Access Token及Access Token Secret。通过XAuth协议认证时也不会保存您的密码信息。
+本程序在测试结束后将依照GPLv3协议开放源代码。
+
+若有任何问题请发送邮件或GT联系 [mailto:fengqiwl@gmail.com fengqiwl@gmail.com] ，谢谢。
