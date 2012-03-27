@@ -1,7 +1,7 @@
 #labels Fanfou,Gtalk,AppEngine,xmpp,JAVA,robot,饭否,机器人
 ==介绍==
 
-FanTalker是部署在Google App Engine云计算平台上的基于xmpp的Google Talk饭否机器人，使用JAVA开发。支持饭否的发送消息、查看时间线、回复消息等功能，更多功能即将上线。命令参考自[http://code.google.com/p/twitalkerplus/ TwitalkerPlus]和[http://code.google.com/p/fanfoutalk/ fanfoutalk]。
+FanTalker是部署在Google App Engine云计算平台上的基于xmpp的Google Talk饭否机器人，使用JAVA开发。支持饭否的发送消息、查看时间线、回复消息等功能，更多功能即将上线。命令参考自[https://code.google.com/p/twitalkerplus/ TwitalkerPlus]和[https://code.google.com/p/fanfoutalk/ fanfoutalk]。
 
 
 ==使用方法==
@@ -47,11 +47,13 @@ FanTalker是部署在Google App Engine云计算平台上的基于xmpp的Google T
   # 查看关注者及好友
   # 发送、查看、删除私信
   # 加入、删除黑名单
+  # 随便看看
+  # 短ID
 
 
 ==其他说明==
 
 本程序不保存用户的密码信息，仅保存OAuth后返回的Access Token及Access Token Secret。通过XAuth协议认证时也不会保存您的密码信息。
-本程序在测试结束后将依照GPLv3协议开放源代码。
+本程序依照GPLv3协议开放源代码。
 
-若有任何问题请发送邮件或GT联系 [mailto:fengqiwl@gmail.com fengqiwl@gmail.com] ，谢谢。
+若有任何问题您可以在饭否 [http://fanfou.com/weili27 @烽麒]，也可以发送邮件或GT联系 [mailto:fengqiwl@gmail.com fengqiwl@gmail.com] ，谢谢。
