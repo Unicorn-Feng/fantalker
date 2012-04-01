@@ -42,9 +42,12 @@ import com.google.appengine.api.urlfetch.HTTPResponse;
 import com.google.appengine.api.urlfetch.URLFetchService;
 import com.google.appengine.api.urlfetch.URLFetchServiceFactory;
 import com.google.appengine.api.xmpp.JID;
+import com.google.appengine.repackaged.org.json.JSONException;
+import com.google.appengine.repackaged.org.json.JSONObject;
 
 
 /**
+ * 连接饭否API
  * @author 烽麒 Unicorn-Feng
  * @link http://fq.vc
  */
@@ -86,12 +89,7 @@ public class API {
 		URL url = new URL("http://api.fanfou.com/users/show.json");
 
 		String params = null;
-		params = "id=" + id + "&oauth_consumer_key=" + consumer_key 
-					+ "&oauth_nonce=" + String.valueOf(nonce)
-					+ "&oauth_signature_method=HMAC-SHA1"
-					+ "&oauth_timestamp=" + String.valueOf(timestamp)
-					+ "&oauth_token=" + oauth_token;
-		
+		params = "id=" + id + "&" + generateParams(timestamp,nonce);
 		params = "GET&" + URLEncoder.encode(url.toString())
 					+ "&" + URLEncoder.encode(params);
 		String sig = generateSignature(params,oauth_token_secret);
@@ -119,13 +117,7 @@ public class API {
 		long nonce = System.nanoTime();
 		URL url = new URL("http://api.fanfou.com/account/verify_credentials.json");
 
-		String params = null;
-		params = "oauth_consumer_key=" + consumer_key 
-					+ "&oauth_nonce=" + String.valueOf(nonce)
-					+ "&oauth_signature_method=HMAC-SHA1"
-					+ "&oauth_timestamp=" + String.valueOf(timestamp)
-					+ "&oauth_token=" + oauth_token;
-		
+		String params = generateParams(timestamp,nonce);
 		params = "GET&" + URLEncoder.encode(url.toString())
 					+ "&" + URLEncoder.encode(params);
 		String sig = generateSignature(params,oauth_token_secret);
@@ -145,7 +137,7 @@ public class API {
 	 * @param pageID 返回结果的页码
 	 * @return HTTPResponse，包含json
 	 * @throws IOException 
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/users.show
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
 	 */
 	@SuppressWarnings("deprecation")
 	public HTTPResponse statuses_mentions(JID fromJID,String pageID) throws IOException
@@ -154,19 +146,13 @@ public class API {
 		long nonce = System.nanoTime();
 		URL url = new URL("http://api.fanfou.com/statuses/mentions.json");
 
-		String params = null;
-		params = "oauth_consumer_key=" + consumer_key 
-					+ "&oauth_nonce=" + String.valueOf(nonce)
-					+ "&oauth_signature_method=HMAC-SHA1"
-					+ "&oauth_timestamp=" + String.valueOf(timestamp)
-					+ "&oauth_token=" + oauth_token;
+		String params = generateParams(timestamp,nonce);
 		if(pageID != null)
 		{
 			params = params + "&page=" + pageID;
 		}
-		
 		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+				+ "&" + URLEncoder.encode(params);
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request;
@@ -191,7 +177,7 @@ public class API {
 	 * @param fromJID 来源JID
 	 * @return HTTPResponse 包含json
 	 * @throws IOException 
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/users.show
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
 	 */
 	public HTTPResponse statuses_mentions(JID fromJID) throws IOException
 	{
@@ -214,12 +200,7 @@ public class API {
 		long nonce = System.nanoTime();
 		URL url = new URL("http://api.fanfou.com/statuses/home_timeline.json");
 
-		String params = null;
-		params = "oauth_consumer_key=" + consumer_key 
-					+ "&oauth_nonce=" + String.valueOf(nonce)
-					+ "&oauth_signature_method=HMAC-SHA1"
-					+ "&oauth_timestamp=" + String.valueOf(timestamp)
-					+ "&oauth_token=" + oauth_token;
+		String params = generateParams(timestamp,nonce);
 		if(pageID != null)
 		{
 			params = params + "&page=" + pageID;
@@ -282,19 +263,11 @@ public class API {
 		{
 			params = "in_reply_to_status_id=" + replyID 
 					+ "&in_reply_to_user_id=" + userID
-					+ "&oauth_consumer_key=" + consumer_key 
-					+ "&oauth_nonce=" + String.valueOf(nonce)
-					+ "&oauth_signature_method=HMAC-SHA1"
-					+ "&oauth_timestamp=" + String.valueOf(timestamp)
-					+ "&oauth_token=" + oauth_token;
+					+ "&" + generateParams(timestamp,nonce);
 		}
 		else
 		{
-			params = "oauth_consumer_key=" + consumer_key 
-					+ "&oauth_nonce=" + String.valueOf(nonce)
-					+ "&oauth_signature_method=HMAC-SHA1"
-					+ "&oauth_timestamp=" + String.valueOf(timestamp)
-					+ "&oauth_token=" + oauth_token;
+			params = generateParams(timestamp,nonce);
 		}
 
 		if(repostID != null)
@@ -418,13 +391,7 @@ public class API {
 		URL url = new URL("http://api.fanfou.com/statuses/show.json");
 
 		String params = null;
-		params = "id=" + id
-				+ "&oauth_consumer_key=" + consumer_key 
-				+ "&oauth_nonce=" + String.valueOf(nonce)
-				+ "&oauth_signature_method=HMAC-SHA1"
-				+ "&oauth_timestamp=" + String.valueOf(timestamp)
-				+ "&oauth_token=" + oauth_token;
-		
+		params = "id=" + id	+ "&" + generateParams(timestamp,nonce);
 		params = "GET&" + URLEncoder.encode(url.toString())
 					+ "&" + URLEncoder.encode(params);
 		String sig = generateSignature(params,oauth_token_secret);
@@ -439,6 +406,86 @@ public class API {
 	
 	
 	/**
+	 * 调用 POST /statuses/destroy 删除指定的消息
+	 * @param fromJID 来源JID
+	 * @param id 指定需要删除的消息id
+	 * @return HTTPResponse，包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.destroy
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse statuses_destroy(JID fromJID, String id) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		URL url = new URL("http://api.fanfou.com/statuses/destroy.json");
+		
+		String params = null;
+		params = "id=" + id + "&" + generateParams(timestamp,nonce);
+		params = "POST&" + URLEncoder.encode(url.toString())
+					+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		request.addHeader(new HTTPHeader("Content-Type","application/x-www-form-urlencoded"));
+		
+		String strPayload = "id=" + id;
+		request.setPayload(strPayload.getBytes());
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		
+		return response;
+	}
+	
+	
+	/**
+	 * 调用POST /friendships/create(destroy) 添加/删除用户为好友
+	 * @param fromJID
+	 * @param id 指定需要添加/删除的好友的user_id，或者loginname
+	 * @return HTTPResponse，包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/friendships.create
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/friendships.destroy
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse friendships_create_destroy(JID fromJID, String id, boolean fo) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		
+		URL url;
+		if(fo)
+		{
+			url = new URL("http://api.fanfou.com/friendships/create.json");
+		}
+		else
+		{
+			url = new URL("http://api.fanfou.com/friendships/destroy.json");
+		}
+		
+		String params;
+		params = "id=" + id + "&" + generateParams(timestamp,nonce);
+		params = "POST&" + URLEncoder.encode(url.toString())
+					+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		request.addHeader(new HTTPHeader("Content-Type","application/x-www-form-urlencoded"));
+		
+		String strPayload = "id=" + id;
+		request.setPayload(strPayload.getBytes());
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		
+		return response;
+	}
+	
+	
+	/**
 	 * 生成OAuth请求头字符串
 	 * @param timestamp 时间戳，取当前时间
 	 * @param nonce 单次值，随机的字符串，防止重复请求
@@ -447,8 +494,7 @@ public class API {
 	 */
 	public String generateAuthString(long timestamp, long nonce, String signature)
 	{
-		String authorization = null;
-		authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + consumer_key
+		String authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + consumer_key
 					+ "\",oauth_signature_method=\"HMAC-SHA1\""
 					+ ",oauth_timestamp=\"" + String.valueOf(timestamp) + "\""
 					+ ",oauth_nonce=\"" + String.valueOf(nonce) + "\""
@@ -459,11 +505,49 @@ public class API {
 	
 	
 	/**
+	 * 生成oauth部分的params字符串
+	 * @param timestamp
+	 * @param nonce
+	 * @return
+	 */
+	public String generateParams(long timestamp, long nonce)
+	{
+		String params = "oauth_consumer_key=" + consumer_key 
+						+ "&oauth_nonce=" + String.valueOf(nonce)
+						+ "&oauth_signature_method=HMAC-SHA1"
+						+ "&oauth_timestamp=" + String.valueOf(timestamp)
+						+ "&oauth_token=" + oauth_token;
+		return params;
+	}
+	
+	
+	/**
+	 * 从错误json中获取错误原因
+	 * @param strerr
+	 * @return
+	 */
+	public static String getError(String strerr)
+	{
+		String error;
+		try {
+			JSONObject json = new JSONObject(strerr);
+			error = json.getString("error");
+			return error;
+			
+		} catch (JSONException e) {
+			//e.printStackTrace();
+			log.info("error.JSON " + e.getMessage());
+			return "未知错误";
+		}
+	}
+	
+	
+	/**
 	 * 截取JID中有效的地址不符
 	 * @param fromJID
 	 * @return 字符串型JID
 	 */
-	public String getStrJID(JID fromJID)
+	public static String getStrJID(JID fromJID)
 	{
 		String strJID = fromJID.getId();
 		int index = strJID.indexOf("/");
