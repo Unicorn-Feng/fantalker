@@ -29,7 +29,11 @@ package vc.fq.fantalker;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.logging.Logger;
 import javax.cache.CacheManager;
 import javax.servlet.http.*;
@@ -68,12 +72,7 @@ public class FantalkerServlet extends HttpServlet
 {
 	public static final String consumer_key = "4b6d4d676807ddb134b03e635e832baf";
 	public static final String consumer_secret = "83e014d54b2923b9d2f4440d18f226bf";
-	public static final String HMAC_SHA1 = "HmacSHA1";
 	public static final Logger log = Logger.getLogger("Fantalker");
-	public static final String NO_OAUTH = "您尚未绑定账号，请使用-oauth命令绑定";
-	public static final String WRONG_CMD = "无效命令";
-	public static final String UNKNOW_ERR = "未知错误";
-	
 	
 	/**
 	 * 用于处理GET请求
@@ -98,13 +97,12 @@ public class FantalkerServlet extends HttpServlet
 		resp.setCharacterEncoding("UTF-8");
 		resp.setContentType("text/html; charset=utf-8");
 		
+		long timestamp1 = System.currentTimeMillis();
+				
 		XMPPService xmpp = XMPPServiceFactory.getXMPPService();
 		Message message = xmpp.parseMessage(req);
 		JID fromJID = message.getFromJid();										//发送者JID
 		String msgbody = message.getBody();										//接收到的消息
-		//msgbody = new String(msgbody.getBytes("ISO-8859-1"));
-		//System.out.println(msgbody);
-		
 		msgbody = msgbody.trim();
 		if(msgbody.isEmpty())
 		{
@@ -150,12 +148,23 @@ public class FantalkerServlet extends HttpServlet
 			case 9:																//-u
 				doUser(fromJID,msgarr,msgbody);
 				break;
+			case 10:															//-del
+				doDel(fromJID,msgarr);
+				break;
+			case 11:															//-fo
+				doFollow(fromJID,msgarr,true);
+				break;
+			case 12:															//-unfo
+				doFollow(fromJID,msgarr,false);
+				break;
 			case -1:															//未知命令
 			default:
-				sendMessage(fromJID,WRONG_CMD);
+				sendMessage(fromJID,"无效命令");
 				break;
 			}
 		}
+		long timestamp2 = System.currentTimeMillis();
+		log.info(String.valueOf(timestamp2-timestamp1) + "ms "+ msgbody);
 	}
 	
 	
@@ -184,6 +193,12 @@ public class FantalkerServlet extends HttpServlet
 			return 8;
 		else if(strCmd.equals("-u") || strCmd.equals("-user"))					//显示用户信息
 			return 9;
+		else if(strCmd.equals("-del") || strCmd.equals("-delete"))				//删除消息
+			return 10;
+		else if(strCmd.equals("-fo") || strCmd.equals("-follow"))				//关注好友
+			return 11;
+		else if(strCmd.equals("-unfo") || strCmd.equals("-unfollow"))			//取消关注
+			return 12;
 		else																	//未知命令
 			return -1;
 	}
@@ -290,6 +305,68 @@ public class FantalkerServlet extends HttpServlet
 	
 	
 	/**
+	 * 将数据存至datastore及memcache
+	 * @param fromJID
+	 * @param strProperty 属性key
+	 * @param value
+	 */
+	public void setData(JID fromJID, String EntityName, String strProperty, String value)
+	{
+		String strJID = getStrJID(fromJID);
+		
+		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+		Entity entity = new Entity(EntityName,strJID);
+		entity.setProperty(strProperty, value);
+		datastore.put(entity);
+		
+		/* 将数据写入MemCache中 */
+		GCache cache;
+		try{
+			GCacheFactory cacheFactory = (GCacheFactory) CacheManager.getInstance().getCacheFactory();
+			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
+			cache.put(strJID + "," + strProperty,value);
+		} catch (javax.cache.CacheException e){
+			log.info(strJID + ":JCache " + e.getMessage());
+		}
+	}
+	
+	
+	/**
+	 * 将数据存至datastore及memcache
+	 * @param fromJID
+	 * @param strProperty[] 属性key数组
+	 * @param value[]
+	 */
+	public void setData(JID fromJID, String EntityName, String[] strProperty, String[] value)
+	{
+		String strJID = getStrJID(fromJID);
+		
+		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+		Entity entity = new Entity(EntityName,strJID);
+		
+		for(int i=0;i<strProperty.length;i++)
+		{
+			entity.setProperty(strProperty[i], value[i]);
+		}
+		datastore.put(entity);
+		
+		/* 将数据写入MemCache中 */
+		GCache cache;
+		try{
+			GCacheFactory cacheFactory = (GCacheFactory) CacheManager.getInstance().getCacheFactory();
+			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
+			for(int i=0;i<strProperty.length;i++)
+			{
+				cache.put(strJID + "," + strProperty[i],value[i]);
+			}
+			
+		} catch (javax.cache.CacheException e){
+			log.info(strJID + ":JCache " + e.getMessage());
+		}
+	}
+	
+	
+	/**
 	 * 通过是否有access_token判断是否已绑定账号
 	 * @param fromJID 来源JID
 	 * @return 已绑定返回true,并发送提示
@@ -330,12 +407,16 @@ public class FantalkerServlet extends HttpServlet
 		String oauth_key_secret;
 		oauth_key = getData(fromJID,"access_token");
 		oauth_key_secret = getData(fromJID,"access_token_secret");
-		if(oauth_key.isEmpty() || oauth_key_secret.isEmpty())
-		{
+		try{
+			if(oauth_key.isEmpty() || oauth_key_secret.isEmpty() || oauth_key == null || oauth_key_secret == null)
+			{
+				return null;
+			}
+			API api = new API(oauth_key,oauth_key_secret);
+			return api;
+		} catch (NullPointerException e){
 			return null;
 		}
-		API api = new API(oauth_key,oauth_key_secret);
-		return api;
 	}
 	
 	
@@ -378,45 +459,32 @@ public class FantalkerServlet extends HttpServlet
 	
 	/**
 	 * 格式化时间
-	 * @param strdate "Mon Mar 26 09:28:48 +0000 2012"
-	 * @return "2012-03-26 09:28:48"
+	 * @param strdate UTC时间 "Mon Mar 26 09:28:48 +0000 2012"
+	 * @return 北京时间 "2012-03-26 17:28:48"
 	 */
 	public String getStrDate(String strdate)
 	{
-		String year,month,day,time,formdate;
-		year = strdate.substring(26,30);
-		month = strdate.substring(4,7);
+		String strTmp;
+		int year,month,day,hour,minute,second;
 		
-		if(month.equals("Jan"))
-			month = "01";
-		else if(month.equals("Feb"))
-			month = "02";
-		else if(month.equals("Mar"))
-			month = "03";
-		else if(month.equals("Apr"))
-			month = "04";
-		else if(month.equals("May"))
-			month = "05";
-		else if(month.equals("Jun"))
-			month = "06";
-		else if(month.equals("Jul"))
-			month = "07";
-		else if(month.equals("Aug"))
-			month = "08";
-		else if(month.equals("Sep"))
-			month = "09";
-		else if(month.equals("Oct"))
-			month = "10";
-		else if(month.equals("Nov"))
-			month = "11";
-		else if(month.equals("Dec"))
-			month = "12";
+		strTmp = strdate.substring(26,30);
+		year = Integer.parseInt(strTmp);
+		strTmp = strdate.substring(4,7);
+		month = getMonth(strTmp);
+		strTmp = strdate.substring(8,10);
+		day = Integer.parseInt(strTmp);
+		strTmp = strdate.substring(11,13);
+		hour = Integer.parseInt(strTmp);
+		strTmp = strdate.substring(14,16);
+		minute = Integer.parseInt(strTmp);
+		strTmp = strdate.substring(17,19);
+		second = Integer.parseInt(strTmp);
 		
-		day = strdate.substring(8,10);
-		time = strdate.substring(11,19);
-		formdate = year + "-" + month + "-" + day + " " + time;
-		return formdate;
-	}
+		Calendar calendar = new GregorianCalendar(year,month-1,day,hour,minute,second);
+		calendar.add(Calendar.HOUR_OF_DAY, 8);
+		SimpleDateFormat format = new java.text.SimpleDateFormat("yyyy-MM-dd kk:mm:ss");
+		return format.format(calendar.getTime());
+ 	}
 	
 	
 	/**
@@ -474,22 +542,7 @@ public class FantalkerServlet extends HttpServlet
 		String oauth_token = tokenarr2[1];
 		//tokenarr2 = tokenarr[1].split("=");
 		//String oauth_token_secret = tokenarr2[1];
-
-		/* 将接收到的Request Token存入数据库 */
-		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
-		Entity account = new Entity("Account",strJID);
-		account.setProperty("request_token", oauth_token);
-		datastore.put(account);
-		
-		/* 将数据写入MemCache中 */
-		GCache cache;
-		try{
-			GCacheFactory cacheFactory = (GCacheFactory) CacheManager.getInstance().getCacheFactory();
-			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
-			cache.put(strJID + ",request_token",oauth_token);
-		} catch (javax.cache.CacheException e){
-			log.info(strJID + ":JCache " + e.getMessage());
-		}
+		setData(fromJID,"Account","request_token",oauth_token);
 		
 		/* 请求用户授权Request Token */
 		String strMessage = "请访问以下网址获取PIN码: \n http://fanfou.com/oauth/authorize?oauth_token="
@@ -579,7 +632,7 @@ public class FantalkerServlet extends HttpServlet
 		oauth_token = tokenarr2[1];
 		tokenarr2 = tokenarr[1].split("=");
 		String oauth_token_secret = tokenarr2[1];
-
+		
 		/* 将接收到的Request Token存入数据库 */
 		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 		Entity account = new Entity("Account",strJID);
@@ -625,6 +678,13 @@ public class FantalkerServlet extends HttpServlet
 			sendMessage(fromJID,"成功与饭否账号 " + id + " 绑定");
 		}
 		
+		/* 保存设置信息到datastore */
+		Entity entity = new Entity("setting",strJID);
+		entity.setProperty("mention", true);
+		entity.setProperty("dm",true);
+		entity.setProperty("time", 5);
+		datastore.put(entity);
+		
 		/* 将数据写入MemCache中 */
 		GCache cache;
 		try{
@@ -632,6 +692,9 @@ public class FantalkerServlet extends HttpServlet
 			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
 			cache.put(strJID + ",access_token",oauth_token);
 			cache.put(strJID + ",access_token_secret",oauth_token_secret);
+			cache.put(strJID + "mention", true);
+			cache.put(strJID + "dm", true);
+			cache.put(strJID + "time", 5);
 		} catch (javax.cache.CacheException e){
 			log.info(strJID + ":JCache " + e.getMessage());
 		}
@@ -647,13 +710,24 @@ public class FantalkerServlet extends HttpServlet
 	{
 		if(getData(fromJID,"access_token") == null)
 		{
-			sendMessage(fromJID,NO_OAUTH);
+			sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
 			return;
 		}
 		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 		String strJID = getStrJID(fromJID);
 		Key k = KeyFactory.createKey("Account", strJID);
 		datastore.delete(k);
+		
+		GCache cache;
+		try{
+			GCacheFactory cacheFactory = (GCacheFactory) CacheManager.getInstance().getCacheFactory();
+			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
+			cache.remove(strJID + ",access_token");
+			cache.remove(strJID + ",access_token_secret");
+		} catch (javax.cache.CacheException e){
+			log.info(strJID + ":JCache " + e.getMessage());
+		}
+		
 		sendMessage(fromJID,"您已成功解除账号绑定，请使用-oauth命令再次绑定账号");
 	}
 
@@ -670,7 +744,7 @@ public class FantalkerServlet extends HttpServlet
 		API api = getAPI(fromJID);
 		if(api == null)
 		{
-			sendMessage(fromJID,NO_OAUTH);
+			sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
 			return;
 		}
 		HTTPResponse response;
@@ -686,13 +760,13 @@ public class FantalkerServlet extends HttpServlet
 			ch = msgarr[1].charAt(0);
 			if(ch != 'p' && ch != 'P')
 			{
-				sendMessage(fromJID,WRONG_CMD);
+				sendMessage(fromJID,"无效命令");
 				return;
 			}
 			msgarr[1] = msgarr[1].substring(1);
 			if(!isNumeric(msgarr[1]))
 			{
-				sendMessage(fromJID,WRONG_CMD);
+				sendMessage(fromJID,"无效命令");
 				return;
 			}
 			response = api.statuses_mentions(fromJID, msgarr[1]);
@@ -706,7 +780,7 @@ public class FantalkerServlet extends HttpServlet
 			if(response.getResponseCode() == 200)
 			{
 				StatusJSON jsonStatus = new StatusJSON(new String(response.getContent()));
-				sendMessage(fromJID,"成功转发\n  " + jsonStatus.getText());
+				sendMessage(fromJID,"成功回复\n  " + jsonStatus.getText());
 			}
 			else if(response.getResponseCode() == 400)
 			{
@@ -717,7 +791,7 @@ public class FantalkerServlet extends HttpServlet
 					
 				} catch (JSONException e) {
 					//e.printStackTrace();
-					log.warning(getStrJID(fromJID) + " rt:" + new String(response.getContent()));
+					log.warning(getStrJID(fromJID) + " @:" + new String(response.getContent()));
 					sendMessage(fromJID,"未知错误");
 				}
 			}
@@ -741,7 +815,7 @@ public class FantalkerServlet extends HttpServlet
 		API api = getAPI(fromJID);
 		if(api == null)
 		{
-			sendMessage(fromJID,NO_OAUTH);
+			sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
 			return;
 		}
 		HTTPResponse response;
@@ -757,13 +831,13 @@ public class FantalkerServlet extends HttpServlet
 			ch = msgarr[1].charAt(0);
 			if(ch != 'p' && ch != 'P')
 			{
-				sendMessage(fromJID,WRONG_CMD);
+				sendMessage(fromJID,"无效命令");
 				return;
 			}
 			msgarr[1] = msgarr[1].substring(1);
 			if(!isNumeric(msgarr[1]))
 			{
-				sendMessage(fromJID,WRONG_CMD);
+				sendMessage(fromJID,"无效命令");
 				return;
 			}
 			response = api.statuses_home_timeline(fromJID,msgarr[1]);
@@ -771,7 +845,7 @@ public class FantalkerServlet extends HttpServlet
 		}
 		else
 		{
-			sendMessage(fromJID,WRONG_CMD);
+			sendMessage(fromJID,"无效命令");
 		}
 	}
 	
@@ -791,8 +865,11 @@ public class FantalkerServlet extends HttpServlet
 					+ "-ho/-home： 查看首页时间线\n"
 					+ "-@/-r-/-reply：查看提到我的消息及 回复消息\n"
 					+ "-rt：转发消息\n"
-					+ "-u： 查看用户信息\n"
 					+ "-m/-msg： 查看指定消息\n"
+					+ "-del/-delete： 删除指定消息\n"
+					+ "-u： 查看用户信息\n"
+					+ "-fo/-follow： 加指定用户为好友"
+					+ "-unfo/-unfollow： 删除指定好友"
 					+ "-oauth： 开始OAuth认证\n"
 					+ "-bind： 绑定PIN码完成认证\n"
 					+ "-remove： 解除关联\n"
@@ -830,10 +907,19 @@ public class FantalkerServlet extends HttpServlet
 				helpMsg = "用法: -msg 消息ID\n显示消息ID所指定的消息\n";
 				break;
 			case 8:																//-rt
-				helpMsg = "用法: -rt 消息ID 内容\n转发指定消息ID的消息\n";
+				helpMsg = "用法: -rt 消息ID [内容]\n转发指定消息ID的消息，内容可选\n";
 				break;
 			case 9:																//-u
 				helpMsg = "用法: -u [用户id]\n显示指定用户的详细信息，不加参数则显示已绑定用户的信息\n";
+				break;
+			case 10:															//-del
+				helpMsg = "用法: -del 消息ID\n删除指定消息\n";
+				break;
+			case 11:															//-fo
+				helpMsg = "用法: -fo 用户ID或loginname\n添加指定用户为好友\n";
+				break;
+			case 12:															//-unfo
+				helpMsg = "用法: -unfo 用户ID或loginname\n删除指定好友\n";
 				break;
 			case -1:															//未知命令
 			default:
@@ -843,7 +929,7 @@ public class FantalkerServlet extends HttpServlet
 		}
 		else
 		{
-			sendMessage(fromJID,WRONG_CMD);
+			sendMessage(fromJID,"无效命令");
 			return;
 		}
 		sendMessage(fromJID,helpMsg);
@@ -861,7 +947,7 @@ public class FantalkerServlet extends HttpServlet
 		API api = getAPI(fromJID);
 		if(api == null)
 		{
-			sendMessage(fromJID,NO_OAUTH);
+			sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
 			return;
 		}
 		HTTPResponse response;
@@ -872,7 +958,7 @@ public class FantalkerServlet extends HttpServlet
 		}
 		else
 		{
-			sendMessage(fromJID,"发送失败");
+			sendMessage(fromJID,API.getError(new String(response.getContent())));
 			log.warning(getStrJID(fromJID) + "status.send: " + new String(response.getContent()));
 		}
 	}
@@ -889,7 +975,7 @@ public class FantalkerServlet extends HttpServlet
 		API api = getAPI(fromJID);
 		if(api == null)
 		{
-			sendMessage(fromJID,NO_OAUTH);
+			sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
 			return;
 		}
 		if(msgarr.length == 2)													//-m 7rXy196_C3k
@@ -911,13 +997,13 @@ public class FantalkerServlet extends HttpServlet
 			}
 			else
 			{
-				sendMessage(fromJID,"未知错误");
+				sendMessage(fromJID,API.getError(new String(response.getContent())));
 				log.warning(getStrJID(fromJID) + "-msg: " + new String(response.getContent()));
 			}
 		}
 		else
 		{
-			sendMessage(fromJID,WRONG_CMD);
+			sendMessage(fromJID,"无效命令");
 		}
 	}
 	
@@ -934,42 +1020,35 @@ public class FantalkerServlet extends HttpServlet
 		API api = getAPI(fromJID);
 		if(api == null)
 		{
-			sendMessage(fromJID,NO_OAUTH);
+			sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
 			return;
 		}
 		HTTPResponse response;
 		int msgarr_len = msgarr.length;
 		if(msgarr_len == 1)
 		{
-			response = api.statuses_mentions(fromJID);
-			StatusShowResp(fromJID, response,2);
+			sendMessage(fromJID,"无效命令");
 		}
 		else																	//-rt -WNEO5ZQt28 test t
 		{
-			int intIndex = strMessage.lastIndexOf(msgarr[1]) + msgarr[1].length() + 1;
-			String replyMsg = strMessage.substring(intIndex);
+			int intIndex;
+			String replyMsg;
+			try{
+				intIndex = strMessage.lastIndexOf(msgarr[1]) + msgarr[1].length() + 1;
+				replyMsg = strMessage.substring(intIndex);
+			} catch (StringIndexOutOfBoundsException e) {
+				replyMsg = "";
+			}
+
 			response = api.statuses_repost(fromJID, replyMsg, msgarr[1]);
 			if(response.getResponseCode() == 200)
 			{
 				StatusJSON jsonStatus = new StatusJSON(new String(response.getContent()));
 				sendMessage(fromJID,"成功转发\n  " + jsonStatus.getText());
 			}
-			else if(response.getResponseCode() == 400)
-			{
-				try {
-					JSONObject json = new JSONObject(new String(response.getContent()));
-					String error = json.getString("error");
-					sendMessage(fromJID,error);
-					
-				} catch (JSONException e) {
-					//e.printStackTrace();
-					log.info(getStrJID(fromJID) + " rt:" + new String(response.getContent()));
-					sendMessage(fromJID,"未知错误");
-				}
-			}
 			else
 			{
-				sendMessage(fromJID,"未知错误");
+				sendMessage(fromJID,API.getError(new String(response.getContent())));
 				log.warning(getStrJID(fromJID) + " rt:" + new String(response.getContent()));
 			}
 		}
@@ -988,7 +1067,7 @@ public class FantalkerServlet extends HttpServlet
 		API api = getAPI(fromJID);
 		if(api == null)
 		{
-			sendMessage(fromJID,NO_OAUTH);
+			sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
 			return;
 		}
 		HTTPResponse response;
@@ -1002,7 +1081,7 @@ public class FantalkerServlet extends HttpServlet
 		}
 		else
 		{
-			sendMessage(fromJID,WRONG_CMD);
+			sendMessage(fromJID,"无效命令");
 			return;
 		}
 		
@@ -1039,9 +1118,108 @@ public class FantalkerServlet extends HttpServlet
 		}
 		else
 		{
-			sendMessage(fromJID,"未知错误");
+			sendMessage(fromJID,API.getError(new String(response.getContent())));
 			log.warning(getStrJID(fromJID) + "-u: " + new String(response.getContent()));
 		}
+	}
+	
+	
+	/**
+	 * 执行-del删除指定消息
+	 * @param fromJID
+	 * @param strarr
+	 * @throws IOException 
+	 */
+	public void doDel(JID fromJID, String[] msgarr) throws IOException
+	{
+		API api = getAPI(fromJID);
+		if(api == null)
+		{
+			sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
+			return;
+		}
+		if(msgarr.length != 2)
+		{
+			sendMessage(fromJID, "无效命令");
+			return;
+		}
+		if(msgarr[1].isEmpty())
+		{
+			sendMessage(fromJID, "无效命令");
+			return;
+		}
+		HTTPResponse response;
+		response = api.statuses_destroy(fromJID, msgarr[1]);
+		String strmessage;
+		if(response.getResponseCode() == 200)
+		{
+			StatusJSON jsonstatus = new StatusJSON(new String(response.getContent()));
+			strmessage = "成功删除消息: " + jsonstatus.getText();
+		}
+		else if(response.getResponseCode() == 404)
+		{
+			strmessage = "没有这条消息";
+		}
+		else if(response.getResponseCode() == 403)
+		{
+			strmessage = "这不是你的消息，不能删除";
+		}
+		else
+		{
+			strmessage = API.getError(new String(response.getContent()));
+			log.info(getStrJID(fromJID) + "del: " + new String(response.getContent()));
+		}
+		sendMessage(fromJID,strmessage);
+	}
+	
+	
+	/**
+	 * 执行-fo/-unfo关注好友
+	 * @param fromJID
+	 * @param msgarr
+	 * @throws IOException 
+	 */
+	public void doFollow(JID fromJID, String[] msgarr, boolean fo) throws IOException
+	{
+		API api = getAPI(fromJID);
+		if(api == null)
+		{
+			sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
+			return;
+		}
+		if(msgarr.length != 2)
+		{
+			sendMessage(fromJID, "无效命令");
+			return;
+		}
+		if(msgarr[1].isEmpty())
+		{
+			sendMessage(fromJID, "无效命令");
+			return;
+		}
+		HTTPResponse response;
+		response = api.friendships_create_destroy(fromJID, msgarr[1],fo);
+		String strmessage;
+		if(response.getResponseCode() == 200)
+		{
+			if(fo)
+			{
+				strmessage = "成功关注 " + msgarr[1];
+			}
+			else
+			{
+				strmessage = "成功取消关注 " + msgarr[1];
+			}
+		}
+		else if(response.getResponseCode() == 404)
+		{
+			strmessage = "找不到该用户";
+		}
+		else
+		{
+			strmessage = API.getError(new String(response.getContent()));
+		}
+		sendMessage(fromJID,strmessage);
 	}
 	
 	
@@ -1063,6 +1241,10 @@ public class FantalkerServlet extends HttpServlet
 		else
 		{
 			strMessage = "提到我的: 第" + pageID + "页\n\n";
+			if(pageID.equals("1"))
+			{
+				setData(fromJID,"mention","last_id",jsonStatus[0].getID());
+			}
 		}
 		for(int i=(length-1);i>=0;i--)
 		{
@@ -1117,7 +1299,7 @@ public class FantalkerServlet extends HttpServlet
 		else
 		{
 			log.warning("status.show " + new String(response.getContent()));
-			sendMessage(fromJID,UNKNOW_ERR);
+			sendMessage(fromJID,"未知错误");
 		}
 	}
 	
@@ -1137,7 +1319,7 @@ public class FantalkerServlet extends HttpServlet
 	public String StatusMessage(String message, StatusJSON jsonStatus)
 	{
 		UserJSON jsonUser = jsonStatus.getUserJSON();
-		message = message + jsonUser.getScreenName() + ": " + jsonStatus.getText()
+		message = message + "*" + jsonUser.getScreenName() + "*: " + jsonStatus.getText()
 					+ "\n [ " + jsonStatus.getID() + " ] " + getStrDate(jsonStatus.getCreatedAt())
 					+ " <- " + getSource(jsonStatus.getSource()) + "\n\n";
 		return message;
@@ -1159,6 +1341,42 @@ public class FantalkerServlet extends HttpServlet
 			}
 		}
 		return true;
+	}
+	
+	
+	/**
+	 * 获取月份
+	 * @param month
+	 * @return 数字月份
+	 */
+	public static int getMonth(String month)
+	{
+		if(month.equals("Jan"))
+			return 1;
+		else if(month.equals("Feb"))
+			return 2;
+		else if(month.equals("Mar"))
+			return 3;
+		else if(month.equals("Apr"))
+			return 4;
+		else if(month.equals("May"))
+			return 5;
+		else if(month.equals("Jun"))
+			return 6;
+		else if(month.equals("Jul"))
+			return 7;
+		else if(month.equals("Aug"))
+			return 8;
+		else if(month.equals("Sep"))
+			return 9;
+		else if(month.equals("Oct"))
+			return 10;
+		else if(month.equals("Nov"))
+			return 11;
+		else if(month.equals("Dec"))
+			return 12;
+		else
+			return -1;
 	}
 	
 }
