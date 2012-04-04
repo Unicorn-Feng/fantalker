@@ -12,6 +12,14 @@ http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
 		<servlet-name>FantalkerServlet</servlet-name>
 		<url-pattern>/_ah/xmpp/message/chat/</url-pattern>
 	</servlet-mapping>
+	<servlet>
+		<servlet-name>CronMention</servlet-name>
+		<servlet-class>vc.fq.fantalker.CronMention</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>CronMention</servlet-name>
+		<url-pattern>/cronm</url-pattern>
+	</servlet-mapping>
 	<welcome-file-list>
 		<welcome-file>index.html</welcome-file>
 	</welcome-file-list>
