@@ -57,9 +57,9 @@ public class API {
 	public static final String consumer_secret = "83e014d54b2923b9d2f4440d18f226bf";
 	public static final String HMAC_SHA1 = "HmacSHA1";
 	public static final Logger log = Logger.getLogger("Fantalker");
+	
 	private String oauth_token;
 	private String oauth_token_secret;
-	
 	
 	/**
 	 * 构造函数 
@@ -70,36 +70,6 @@ public class API {
 	{
 		oauth_token = oauthtoken;
 		oauth_token_secret = oauthtokensecret;
-	}
-	
-	
-	/**
-	 * 调用 GET /users/show 返回用户的信息
-	 * @param fromJID 来源JID
-	 * @param id 指定的用户id
-	 * @return HTTPResponse，包含json
-	 * @throws IOException 
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/users.show
-	 */
-	@SuppressWarnings("deprecation")
-	public HTTPResponse users_show(JID fromJID, String id) throws IOException
-	{
-		long timestamp = System.currentTimeMillis() / 1000;
-		long nonce = System.nanoTime();
-		URL url = new URL("http://api.fanfou.com/users/show.json");
-
-		String params = null;
-		params = "id=" + id + "&" + generateParams(timestamp,nonce);
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
-		String sig = generateSignature(params,oauth_token_secret);
-		String authorization = generateAuthString(timestamp, nonce, sig);
-		HTTPRequest request = new HTTPRequest(new URL(url.toString() + "?id=" + id),HTTPMethod.GET);
-		request.addHeader(new HTTPHeader("Authorization",authorization));
-		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
-		HTTPResponse response = service.fetch(request);
-		
-		return response;
 	}
 	
 	
@@ -131,315 +101,6 @@ public class API {
 	}
 	
 
-	/**
-	 * 调用 GET /statuses/mentions 显示回复/提到当前用户的20条消息
-	 * @param fromJID 来源JID
-	 * @param pageID 返回结果的页码
-	 * @return HTTPResponse，包含json
-	 * @throws IOException 
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
-	 */
-	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_mentions(JID fromJID,String pageID) throws IOException
-	{
-		long timestamp = System.currentTimeMillis() / 1000;
-		long nonce = System.nanoTime();
-		URL url = new URL("http://api.fanfou.com/statuses/mentions.json");
-
-		String params = generateParams(timestamp,nonce);
-		if(pageID != null)
-		{
-			params = params + "&page=" + pageID;
-		}
-		params = "GET&" + URLEncoder.encode(url.toString())
-				+ "&" + URLEncoder.encode(params);
-		String sig = generateSignature(params,oauth_token_secret);
-		String authorization = generateAuthString(timestamp, nonce, sig);
-		HTTPRequest request;
-		if(pageID == null)
-		{
-			request = new HTTPRequest(url,HTTPMethod.GET);
-		}
-		else
-		{
-			request = new HTTPRequest(new URL(url.toString() + "?page=" + pageID),HTTPMethod.GET);
-		}
-		request.addHeader(new HTTPHeader("Authorization",authorization));
-		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
-		HTTPResponse response = service.fetch(request);
-		
-		return response;
-	}
-	
-	
-	/**
-	 * 调用 GET /statuses/mentions 显示回复/提到当前用户的20条消息
-	 * @param fromJID 来源JID
-	 * @return HTTPResponse 包含json
-	 * @throws IOException 
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
-	 */
-	public HTTPResponse statuses_mentions(JID fromJID) throws IOException
-	{
-		return 	statuses_mentions(fromJID,null);
-	}
-	
-	
-	/**
-	 * 调用 GET /status/home_timeline 显示指定用户及其好友的消息
-	 * @param fromJID 来源JID
-	 * @param pageID 指定返回结果的页码
-	 * @return HTTPResponse 包含json
-	 * @throws IOException
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.home-timeline
-	 */
-	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_home_timeline(JID fromJID, String pageID) throws IOException
-	{
-		long timestamp = System.currentTimeMillis() / 1000;
-		long nonce = System.nanoTime();
-		URL url = new URL("http://api.fanfou.com/statuses/home_timeline.json");
-
-		String params = generateParams(timestamp,nonce);
-		if(pageID != null)
-		{
-			params = params + "&page=" + pageID;
-		}
-		
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
-		String sig = generateSignature(params,oauth_token_secret);
-		String authorization = generateAuthString(timestamp, nonce, sig);
-		HTTPRequest request;
-		if(pageID == null)
-		{
-			request = new HTTPRequest(url,HTTPMethod.GET);
-		}
-		else
-		{
-			request = new HTTPRequest(new URL(url.toString() + "?page=" + pageID),HTTPMethod.GET);
-		}
-		request.addHeader(new HTTPHeader("Authorization",authorization));
-		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
-		HTTPResponse response = service.fetch(request);
-		return response;
-	}
-	
-	
-	/**
-	 * 调用 GET /status/home_timeline 显示指定用户及其好友的消息
-	 * @param fromJID 来源JID
-	 * @return HTTPResponse 包含json
-	 * @throws IOException
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.home-timeline
-	 */
-	public HTTPResponse statuses_home_timeline(JID fromJID) throws IOException
-	{
-		return statuses_home_timeline(fromJID,null);
-	}
-	
-	
-	/**
-	 * 调用 POST /statuses/update 发送消息
-	 * @param fromJID 来源JID
-	 * @param strMessage 要发送的消息
-	 * @param replyID in_reply_to_status_id 回复的消息id
-	 * @param userID in_reply_to_user_id 回复的用户id
-	 * @param repostID repost_status_id 转发的消息id
-	 * @return HTTPResponse，包含json
-	 * @throws IOException
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
-	 */
-	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_update(JID fromJID, String strMessage, String replyID, String userID, String repostID) throws IOException
-	{
-		long timestamp = System.currentTimeMillis() / 1000;
-		long nonce = System.nanoTime();
-		URL url = new URL("http://api.fanfou.com/statuses/update.json");
-		
-		String params = null;
-		
-		if(replyID != null && userID !=null)
-		{
-			params = "in_reply_to_status_id=" + replyID 
-					+ "&in_reply_to_user_id=" + userID
-					+ "&" + generateParams(timestamp,nonce);
-		}
-		else
-		{
-			params = generateParams(timestamp,nonce);
-		}
-
-		if(repostID != null)
-		{
-			params = params + "&repost_status_id=" + repostID;
-		}
-		params = params + "&status=" + URLEncoder.encode(strMessage,"GB2312").replaceAll("\\+","%20");
-		
-		params = "POST&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
-		params = params.replace("%257E", "~");
-		String sig = generateSignature(params,oauth_token_secret);
-		
-		String authorization = generateAuthString(timestamp, nonce, sig);
-		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);
-		request.addHeader(new HTTPHeader("Authorization",authorization));
-		request.addHeader(new HTTPHeader("Content-Type","application/x-www-form-urlencoded"));
-		
-		String strPayload;
-		strPayload = "status=" + URLEncoder.encode(strMessage,"GB2312");
-		if(replyID != null && userID != null)
-		{
-			strPayload = strPayload + "&in_reply_to_status_id=" + replyID + "&in_reply_to_user_id=" + userID;
-		}
-		if(repostID != null)
-		{
-			strPayload = strPayload + "&repost_status_id=" + repostID;
-		}
-		request.setPayload(strPayload.getBytes());
-		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
-		HTTPResponse response = service.fetch(request);
-		
-		return response;
-	}
-	
-	
-	/**
-	 * 调用 POST /statuses/update 发送消息
-	 * @param fromJID 来源JID
-	 * @param strMessage 要发送的消息
-	 * @return HTTPResponse，包含json
-	 * @throws IOException
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
-	 */
-	public HTTPResponse statuses_send(JID fromJID, String strMessage) throws IOException
-	{
-		return statuses_update(fromJID,strMessage,null,null,null);
-	}
-	
-	
-	/**
-	 * 调用 POST /statuses/update 回复消息
-	 * @param fromJID 来源JID
-	 * @param strMessage 要发送的消息
-	 * @param replyID in_reply_to_status_id 回复的消息id
-	 * @return HTTPResponse，包含json
-	 * @throws IOException
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
-	 */
-	public HTTPResponse statuses_reply(JID fromJID, String strMessage, String replyID) throws IOException
-	{
-		HTTPResponse response;
-		response = statuses_show(fromJID, replyID);
-		if(response.getResponseCode() == 200)
-		{
-			StatusJSON jsonStatus = new StatusJSON(new String(response.getContent()));
-			String userid = jsonStatus.getUserJSON().getId();
-			strMessage = "@" + jsonStatus.getUserJSON().getScreenName() + " " + strMessage;
-			return statuses_update(fromJID, strMessage, replyID, userid, replyID);
-		}
-		else
-		{
-			log.info(getStrJID(fromJID) + "-r: " + new String(response.getContent()));
-			return null;
-		}
-	}
-	
-	
-	/**
-	 * 调用 POST /statuses/update 转发消息
-	 * @param fromJID 来源JID
-	 * @param strMessage 要发送的消息
-	 * @param repostID repost_status_id 转发的消息id
-	 * @return HTTPResponse，包含json
-	 * @throws IOException
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
-	 */
-	public HTTPResponse statuses_repost(JID fromJID, String strMessage, String repostID) throws IOException
-	{
-		HTTPResponse response;
-		response = statuses_show(fromJID, repostID);
-		if(response.getResponseCode() == 200)
-		{
-			StatusJSON jsonStatus = new StatusJSON(new String(response.getContent()));
-			String userid = jsonStatus.getUserJSON().getId();
-			strMessage = strMessage + " 转@" + jsonStatus.getUserJSON().getScreenName()
-					+ " " + jsonStatus.getText();
-			return statuses_update(fromJID, strMessage, repostID, userid, repostID);
-		}
-		else
-		{
-			log.info(getStrJID(fromJID) + "-rt: " + new String(response.getContent()));
-			return null;
-		}
-	}
-	
-	
-	/**
-	 * 调用GET /statuses/show 返回好友或未设置隐私用户的某条消息
-	 * @param fromJID
-	 * @param id 指定需要浏览的消息id
-	 * @return HTTPResponse，包含json
-	 * @throws IOException 
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.show
-	 */
-	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_show(JID fromJID, String id) throws IOException
-	{
-		long timestamp = System.currentTimeMillis() / 1000;
-		long nonce = System.nanoTime();
-		URL url = new URL("http://api.fanfou.com/statuses/show.json");
-
-		String params = null;
-		params = "id=" + id	+ "&" + generateParams(timestamp,nonce);
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
-		String sig = generateSignature(params,oauth_token_secret);
-		String authorization = generateAuthString(timestamp, nonce, sig);
-		HTTPRequest request;
-		request = new HTTPRequest(new URL(url.toString() + "?id=" + id),HTTPMethod.GET);
-		request.addHeader(new HTTPHeader("Authorization",authorization));
-		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
-		HTTPResponse response = service.fetch(request);
-		return response;
-	}
-	
-	
-	/**
-	 * 调用 POST /statuses/destroy 删除指定的消息
-	 * @param fromJID 来源JID
-	 * @param id 指定需要删除的消息id
-	 * @return HTTPResponse，包含json
-	 * @throws IOException
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.destroy
-	 */
-	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_destroy(JID fromJID, String id) throws IOException
-	{
-		long timestamp = System.currentTimeMillis() / 1000;
-		long nonce = System.nanoTime();
-		URL url = new URL("http://api.fanfou.com/statuses/destroy.json");
-		
-		String params = null;
-		params = "id=" + id + "&" + generateParams(timestamp,nonce);
-		params = "POST&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
-		String sig = generateSignature(params,oauth_token_secret);
-		
-		String authorization = generateAuthString(timestamp, nonce, sig);
-		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);
-		request.addHeader(new HTTPHeader("Authorization",authorization));
-		request.addHeader(new HTTPHeader("Content-Type","application/x-www-form-urlencoded"));
-		
-		String strPayload = "id=" + id;
-		request.setPayload(strPayload.getBytes());
-		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
-		HTTPResponse response = service.fetch(request);
-		
-		return response;
-	}
-	
-	
 	/**
 	 * 调用POST /friendships/create(destroy) 添加/删除用户为好友
 	 * @param fromJID
@@ -483,8 +144,8 @@ public class API {
 		
 		return response;
 	}
-	
-	
+
+
 	/**
 	 * 生成OAuth请求头字符串
 	 * @param timestamp 时间戳，取当前时间
@@ -502,8 +163,8 @@ public class API {
 					+ ",oauth_token=\"" + oauth_token + "\"";
 		return authorization;
 	}
-	
-	
+
+
 	/**
 	 * 生成oauth部分的params字符串
 	 * @param timestamp
@@ -519,42 +180,367 @@ public class API {
 						+ "&oauth_token=" + oauth_token;
 		return params;
 	}
+
+
+	/**
+	 * 调用 GET /status/home_timeline 显示指定用户及其好友的消息
+	 * @param fromJID 来源JID
+	 * @param pageID 指定返回结果的页码
+	 * @return HTTPResponse 包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.home-timeline
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse statuses_home_timeline(JID fromJID, String pageID) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		URL url = new URL("http://api.fanfou.com/statuses/home_timeline.json");
+	
+		String params = generateParams(timestamp,nonce);
+		if(pageID != null)
+		{
+			params = params + "&page=" + pageID;
+		}
+		
+		params = "GET&" + URLEncoder.encode(url.toString())
+					+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request;
+		if(pageID == null)
+		{
+			request = new HTTPRequest(url,HTTPMethod.GET);
+		}
+		else
+		{
+			request = new HTTPRequest(new URL(url.toString() + "?page=" + pageID),HTTPMethod.GET);
+		}
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		return response;
+	}
+
+
+	/**
+	 * 调用 GET /status/home_timeline 显示指定用户及其好友的消息
+	 * @param fromJID 来源JID
+	 * @return HTTPResponse 包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.home-timeline
+	 */
+	public HTTPResponse statuses_home_timeline(JID fromJID) throws IOException
+	{
+		return statuses_home_timeline(fromJID,null);
+	}
+
+
+	/**
+	 * 调用 POST /statuses/destroy 删除指定的消息
+	 * @param fromJID 来源JID
+	 * @param id 指定需要删除的消息id
+	 * @return HTTPResponse，包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.destroy
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse statuses_destroy(JID fromJID, String id) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		URL url = new URL("http://api.fanfou.com/statuses/destroy.json");
+		
+		String params = null;
+		params = "id=" + id + "&" + generateParams(timestamp,nonce);
+		params = "POST&" + URLEncoder.encode(url.toString())
+					+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		request.addHeader(new HTTPHeader("Content-Type","application/x-www-form-urlencoded"));
+		
+		String strPayload = "id=" + id;
+		request.setPayload(strPayload.getBytes());
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		
+		return response;
+	}
+
+
+	/**
+	 * 调用 GET /statuses/mentions 显示回复/提到当前用户的20条消息
+	 * @param fromJID 来源JID
+	 * @param pageID 返回结果的页码
+	 * @param since_id 只返回消息id大于since_id的消息
+	 * @return HTTPResponse，包含json
+	 * @throws IOException 
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse statuses_mentions(JID fromJID, String pageID, String since_id) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		String strurl = "http://api.fanfou.com/statuses/mentions.json";
+	
+		String params = generateParams(timestamp,nonce);
+		if(pageID != null)
+		{
+			params = params + "&page=" + pageID;
+		}
+		if(since_id != null)
+		{
+			params = params + "&since_id=" + since_id;
+		}
+		params = "GET&" + URLEncoder.encode(strurl)
+				+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request;
+		if(pageID != null)
+		{
+			strurl = strurl + "?page=" + pageID;
+		}
+		if(since_id != null)
+		{
+			strurl = strurl + "?since_id=" + since_id;
+		}
+		URL url = new URL(strurl);
+		request = new HTTPRequest(url,HTTPMethod.GET);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		
+		return response;
+	}
+
+
+	/**
+	 * 调用 GET /statuses/mentions 显示回复/提到当前用户的20条消息
+	 * @param fromJID 来源JID
+	 * @return HTTPResponse 包含json
+	 * @throws IOException 
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
+	 */
+	public HTTPResponse statuses_mentions(JID fromJID) throws IOException
+	{
+		return 	statuses_mentions(fromJID,null,null);
+	}
 	
 	
 	/**
-	 * 从错误json中获取错误原因
-	 * @param strerr
-	 * @return
+	 * 调用 GET /statuses/mentions 显示回复/提到当前用户的20条消息
+	 * @param fromJID 来源JID
+	 * @param pageID 返回结果的页码
+	 * @return HTTPResponse，包含json
+	 * @throws IOException 
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
 	 */
-	public static String getError(String strerr)
+	public HTTPResponse statuses_mentions(JID fromJID,String pageID) throws IOException
 	{
-		String error;
-		try {
-			JSONObject json = new JSONObject(strerr);
-			error = json.getString("error");
-			return error;
-			
-		} catch (JSONException e) {
-			//e.printStackTrace();
-			log.info("error.JSON " + e.getMessage());
-			return "未知错误";
+		return 	statuses_mentions(fromJID,pageID,null);
+	}
+
+
+	/**
+	 * 调用 POST /statuses/update 回复消息
+	 * @param fromJID 来源JID
+	 * @param strMessage 要发送的消息
+	 * @param replyID in_reply_to_status_id 回复的消息id
+	 * @return HTTPResponse，包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
+	 */
+	public HTTPResponse statuses_reply(JID fromJID, String strMessage, String replyID) throws IOException
+	{
+		HTTPResponse response;
+		response = statuses_show(fromJID, replyID);
+		if(response.getResponseCode() == 200)
+		{
+			StatusJSON jsonStatus = new StatusJSON(new String(response.getContent()));
+			String userid = jsonStatus.getUserJSON().getId();
+			strMessage = "@" + jsonStatus.getUserJSON().getScreenName() + " " + strMessage;
+			return statuses_update(fromJID, strMessage, replyID, userid, replyID);
+		}
+		else
+		{
+			log.info(Common.getStrJID(fromJID) + "-r: " + new String(response.getContent()));
+			return null;
 		}
 	}
+
+
+	/**
+	 * 调用 POST /statuses/update 转发消息
+	 * @param fromJID 来源JID
+	 * @param strMessage 要发送的消息
+	 * @param repostID repost_status_id 转发的消息id
+	 * @return HTTPResponse，包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
+	 */
+	public HTTPResponse statuses_repost(JID fromJID, String strMessage, String repostID) throws IOException
+	{
+		HTTPResponse response;
+		response = statuses_show(fromJID, repostID);
+		if(response.getResponseCode() == 200)
+		{
+			StatusJSON jsonStatus = new StatusJSON(new String(response.getContent()));
+			String userid = jsonStatus.getUserJSON().getId();
+			strMessage = strMessage + " 转@" + jsonStatus.getUserJSON().getScreenName()
+					+ " " + jsonStatus.getText();
+			return statuses_update(fromJID, strMessage, repostID, userid, repostID);
+		}
+		else
+		{
+			log.info(Common.getStrJID(fromJID) + "-rt: " + new String(response.getContent()));
+			return null;
+		}
+	}
+
+
+	/**
+	 * 调用 POST /statuses/update 发送消息
+	 * @param fromJID 来源JID
+	 * @param strMessage 要发送的消息
+	 * @return HTTPResponse，包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
+	 */
+	public HTTPResponse statuses_send(JID fromJID, String strMessage) throws IOException
+	{
+		return statuses_update(fromJID,strMessage,null,null,null);
+	}
 	
 	
 	/**
-	 * 截取JID中有效的地址不符
+	 * 调用GET /statuses/show 返回好友或未设置隐私用户的某条消息
 	 * @param fromJID
-	 * @return 字符串型JID
+	 * @param id 指定需要浏览的消息id
+	 * @return HTTPResponse，包含json
+	 * @throws IOException 
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.show
 	 */
-	public static String getStrJID(JID fromJID)
+	@SuppressWarnings("deprecation")
+	public HTTPResponse statuses_show(JID fromJID, String id) throws IOException
 	{
-		String strJID = fromJID.getId();
-		int index = strJID.indexOf("/");
-		strJID = strJID.substring(0,index);
-		return strJID;
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		URL url = new URL("http://api.fanfou.com/statuses/show.json");
+
+		String params = null;
+		params = "id=" + id	+ "&" + generateParams(timestamp,nonce);
+		params = "GET&" + URLEncoder.encode(url.toString())
+					+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request;
+		request = new HTTPRequest(new URL(url.toString() + "?id=" + id),HTTPMethod.GET);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		return response;
 	}
 	
+	
+	/**
+	 * 调用 POST /statuses/update 发送消息
+	 * @param fromJID 来源JID
+	 * @param strMessage 要发送的消息
+	 * @param replyID in_reply_to_status_id 回复的消息id
+	 * @param userID in_reply_to_user_id 回复的用户id
+	 * @param repostID repost_status_id 转发的消息id
+	 * @return HTTPResponse，包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse statuses_update(JID fromJID, String strMessage, String replyID, String userID, String repostID) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		URL url = new URL("http://api.fanfou.com/statuses/update.json");
+		
+		String params = null;
+		
+		if(replyID != null && userID !=null)
+		{
+			params = "in_reply_to_status_id=" + replyID 
+					+ "&in_reply_to_user_id=" + userID
+					+ "&" + generateParams(timestamp,nonce);
+		}
+		else
+		{
+			params = generateParams(timestamp,nonce);
+		}
+	
+		if(repostID != null)
+		{
+			params = params + "&repost_status_id=" + repostID;
+		}
+		params = params + "&status=" + URLEncoder.encode(strMessage,"GB2312").replaceAll("\\+","%20");
+		
+		params = "POST&" + URLEncoder.encode(url.toString())
+					+ "&" + URLEncoder.encode(params);
+		params = params.replace("%257E", "~");
+		String sig = generateSignature(params,oauth_token_secret);
+		
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		request.addHeader(new HTTPHeader("Content-Type","application/x-www-form-urlencoded"));
+		
+		String strPayload;
+		strPayload = "status=" + URLEncoder.encode(strMessage,"GB2312");
+		if(replyID != null && userID != null)
+		{
+			strPayload = strPayload + "&in_reply_to_status_id=" + replyID + "&in_reply_to_user_id=" + userID;
+		}
+		if(repostID != null)
+		{
+			strPayload = strPayload + "&repost_status_id=" + repostID;
+		}
+		request.setPayload(strPayload.getBytes());
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		
+		return response;
+	}
+
+
+	/**
+	 * 调用 GET /users/show 返回用户的信息
+	 * @param fromJID 来源JID
+	 * @param id 指定的用户id
+	 * @return HTTPResponse，包含json
+	 * @throws IOException 
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/users.show
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse users_show(JID fromJID, String id) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		URL url = new URL("http://api.fanfou.com/users/show.json");
+	
+		String params = null;
+		params = "id=" + id + "&" + generateParams(timestamp,nonce);
+		params = "GET&" + URLEncoder.encode(url.toString())
+					+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request = new HTTPRequest(new URL(url.toString() + "?id=" + id),HTTPMethod.GET);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		
+		return response;
+	}
+
 	
     /**
      * Computes RFC 2104-compliant HMAC signature.
