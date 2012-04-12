@@ -200,6 +200,71 @@ public class API {
 
 
 	/**
+	 * 调用GET /statuses/context_timeline 按照时间先后顺序显示消息上下文
+	 * @param fromJID 来源JID
+	 * @param id 指定消息ID
+	 * @return HTTPResponse 包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.context-timeline
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse statuses_context_timeline(JID fromJID, String id) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		URL url = new URL("http://api.fanfou.com/statuses/context_timeline.json");
+
+		String params = null;
+		params = "id=" + id	+ "&" + generateParams(timestamp,nonce);
+		params = "GET&" + URLEncoder.encode(url.toString())
+					+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request;
+		request = new HTTPRequest(new URL(url.toString() + "?id=" + id),HTTPMethod.GET);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		return response;
+	}
+
+
+	/**
+	 * 调用 POST /statuses/destroy 删除指定的消息
+	 * @param fromJID 来源JID
+	 * @param id 指定需要删除的消息id
+	 * @return HTTPResponse，包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.destroy
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse statuses_destroy(JID fromJID, String id) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		URL url = new URL("http://api.fanfou.com/statuses/destroy.json");
+		
+		String params = null;
+		params = "id=" + id + "&" + generateParams(timestamp,nonce);
+		params = "POST&" + URLEncoder.encode(url.toString())
+					+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		request.addHeader(new HTTPHeader("Content-Type","application/x-www-form-urlencoded"));
+		
+		String strPayload = "id=" + id;
+		request.setPayload(strPayload.getBytes());
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		
+		return response;
+	}
+
+
+	/**
 	 * 调用 GET /status/home_timeline 显示指定用户及其好友的消息
 	 * @param fromJID 来源JID
 	 * @param pageID 指定返回结果的页码
@@ -250,41 +315,6 @@ public class API {
 	public HTTPResponse statuses_home_timeline(JID fromJID) throws IOException
 	{
 		return statuses_home_timeline(fromJID,null);
-	}
-
-
-	/**
-	 * 调用 POST /statuses/destroy 删除指定的消息
-	 * @param fromJID 来源JID
-	 * @param id 指定需要删除的消息id
-	 * @return HTTPResponse，包含json
-	 * @throws IOException
-	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.destroy
-	 */
-	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_destroy(JID fromJID, String id) throws IOException
-	{
-		long timestamp = System.currentTimeMillis() / 1000;
-		long nonce = System.nanoTime();
-		URL url = new URL("http://api.fanfou.com/statuses/destroy.json");
-		
-		String params = null;
-		params = "id=" + id + "&" + generateParams(timestamp,nonce);
-		params = "POST&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
-		String sig = generateSignature(params,oauth_token_secret);
-		
-		String authorization = generateAuthString(timestamp, nonce, sig);
-		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);
-		request.addHeader(new HTTPHeader("Authorization",authorization));
-		request.addHeader(new HTTPHeader("Content-Type","application/x-www-form-urlencoded"));
-		
-		String strPayload = "id=" + id;
-		request.setPayload(strPayload.getBytes());
-		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
-		HTTPResponse response = service.fetch(request);
-		
-		return response;
 	}
 
 

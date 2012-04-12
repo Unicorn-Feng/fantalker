@@ -3,6 +3,6 @@
   <cron>
     <url>/cronm</url>
     <description>Check Mentions every 5 minutes</description>
-    <schedule>every 1 minutes</schedule>
+    <schedule>every 5 minutes</schedule>
   </cron>
 </cronentries>

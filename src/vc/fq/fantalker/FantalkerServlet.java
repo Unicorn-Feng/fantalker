@@ -414,7 +414,7 @@ public class FantalkerServlet extends HttpServlet
 					+ "-ho/-home： 查看首页时间线\n"
 					+ "-@/-r-/-reply：查看提到我的消息及 回复消息\n"
 					+ "-rt：转发消息\n"
-					+ "-m/-msg： 查看指定消息\n"
+					+ "-m/-msg： 查看指定消息的上下文\n"
 					+ "-del/-delete： 删除指定消息\n"
 					+ "-u： 查看用户信息\n"
 					+ "-fo/-follow： 加指定用户为好友"
@@ -453,7 +453,7 @@ public class FantalkerServlet extends HttpServlet
 				helpMsg = "用法: -home [p页码]\n显示时间线，页码可选\n";
 				break;
 			case 7:																//-msg
-				helpMsg = "用法: -msg 消息ID\n显示消息ID所指定的消息\n";
+				helpMsg = "用法: -msg 消息ID\n显示消息ID所指定的消息及其上下文\n";
 				break;
 			case 8:																//-rt
 				helpMsg = "用法: -rt 消息ID [内容]\n转发指定消息ID的消息，内容可选\n";
@@ -548,11 +548,10 @@ public class FantalkerServlet extends HttpServlet
 		if(msgarr.length == 2)													//-m 7rXy196_C3k
 		{
 			HTTPResponse response;
-			response = api.statuses_show(fromJID, msgarr[1]);
+			response = api.statuses_context_timeline(fromJID, msgarr[1]);
 			if(response.getResponseCode() == 200)
 			{
-				StatusJSON jsonStatus = new StatusJSON(new String(response.getContent()));
-				Common.sendMessage(fromJID,Common.StatusMessage("",jsonStatus));
+				Common.StatusShowResp(fromJID, response,4);
 			}
 			else if(response.getResponseCode() == 403)
 			{
@@ -628,8 +627,6 @@ public class FantalkerServlet extends HttpServlet
 		String[] tokenarr = tokenstring.split("&");
 		String[] tokenarr2 = tokenarr[0].split("=");
 		String oauth_token = tokenarr2[1];
-		//tokenarr2 = tokenarr[1].split("=");
-		//String oauth_token_secret = tokenarr2[1];
 		Common.setData(fromJID,"Account","request_token",oauth_token);
 		
 		/* 请求用户授权Request Token */
