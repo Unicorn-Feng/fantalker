@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Collections;
-import java.util.logging.Logger;
 import javax.cache.CacheManager;
 import javax.servlet.http.*;
 import com.google.appengine.api.memcache.stdimpl.GCache;
@@ -64,10 +63,7 @@ import com.google.appengine.repackaged.org.json.JSONObject;
 @SuppressWarnings("serial")
 public class FantalkerServlet extends HttpServlet 
 {
-	public static final String consumer_key = "4b6d4d676807ddb134b03e635e832baf";
-	public static final String consumer_secret = "83e014d54b2923b9d2f4440d18f226bf";
-	public static final Logger log = Logger.getLogger("Fantalker");
-	
+
 	/**
 	 * 用于处理GET请求
 	 */
@@ -195,7 +191,7 @@ public class FantalkerServlet extends HttpServlet
 		}
 		
 		String params = null;
-		params = "oauth_consumer_key=" + consumer_key
+		params = "oauth_consumer_key=" + API.consumer_key
 					+ "&oauth_nonce=" + String.valueOf(nonce)
 					+ "&oauth_signature_method=HMAC-SHA1"
 					+ "&oauth_timestamp=" + String.valueOf(timestamp)
@@ -207,7 +203,7 @@ public class FantalkerServlet extends HttpServlet
 		String sig = API.generateSignature(params);
 		
 		String authorization = null;
-		authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + consumer_key
+		authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + API.consumer_key
 					+ "\",oauth_signature_method=\"HMAC-SHA1\""
 					+ ",oauth_timestamp=\"" + String.valueOf(timestamp) + "\""
 					+ ",oauth_nonce=\"" + String.valueOf(nonce) + "\""
@@ -224,7 +220,7 @@ public class FantalkerServlet extends HttpServlet
 		{
 			String errMsg = "出现错误" + String.valueOf(response.getResponseCode()) + ": " + new String(response.getContent());
 			Common.sendMessage(fromJID,errMsg);
-			log.warning(strJID + " :" + errMsg);
+			Common.log.warning(strJID + " :" + errMsg);
 			return;
 		}
 		
@@ -251,7 +247,7 @@ public class FantalkerServlet extends HttpServlet
 				JSONObject respJSON = new JSONObject(new String(response.getContent()));
 				id = respJSON.getString("id");
 			} catch (JSONException e) {
-				log.info(strJID + ":JSONid " + e.getMessage());
+				Common.log.info(strJID + ":JSONid " + e.getMessage());
 			}
 		}
 		if(id == null)															//失败重试
@@ -263,7 +259,7 @@ public class FantalkerServlet extends HttpServlet
 					JSONObject respJSON = new JSONObject(new String(response.getContent()));
 					id = respJSON.getString("id");
 				} catch (JSONException e) {
-					log.info(strJID + ":JSONid " + e.getMessage());
+					Common.log.info(strJID + ":JSONid " + e.getMessage());
 				}
 			}
 		}
@@ -272,7 +268,7 @@ public class FantalkerServlet extends HttpServlet
 		{
 			datastore.put(account);
 			Common.sendMessage(fromJID,"成功绑定，但在获取饭否ID时出现未知错误");
-			log.warning(strJID + ": " + new String(response.getContent()));
+			Common.log.warning(strJID + ": " + new String(response.getContent()));
 		}
 		else
 		{
@@ -299,7 +295,7 @@ public class FantalkerServlet extends HttpServlet
 			cache.put(strJID + "dm", true);
 			cache.put(strJID + "time", 5);
 		} catch (javax.cache.CacheException e){
-			log.info(strJID + ":JCache " + e.getMessage());
+			Common.log.info(strJID + ":JCache " + e.getMessage());
 		}
 	}
 	
@@ -347,7 +343,7 @@ public class FantalkerServlet extends HttpServlet
 		else
 		{
 			strmessage = Common.getError(new String(response.getContent()));
-			log.info(Common.getStrJID(fromJID) + "del: " + new String(response.getContent()));
+			Common.log.info(Common.getStrJID(fromJID) + "del: " + new String(response.getContent()));
 		}
 		Common.sendMessage(fromJID,strmessage);
 	}
@@ -569,7 +565,7 @@ public class FantalkerServlet extends HttpServlet
 			else
 			{
 				Common.sendMessage(fromJID,Common.getError(new String(response.getContent())));
-				log.warning(Common.getStrJID(fromJID) + "-msg: " + new String(response.getContent()));
+				Common.log.warning(Common.getStrJID(fromJID) + "-msg: " + new String(response.getContent()));
 			}
 		}
 		else
@@ -598,7 +594,7 @@ public class FantalkerServlet extends HttpServlet
 		URL url = new URL("http://fanfou.com/oauth/request_token");
 	
 		String params = null;
-		params = "oauth_consumer_key=" + consumer_key 
+		params = "oauth_consumer_key=" + API.consumer_key 
 					+ "&oauth_nonce=" + String.valueOf(nonce)
 					+ "&oauth_signature_method=HMAC-SHA1"
 					+ "&oauth_timestamp=" + String.valueOf(timestamp);
@@ -608,7 +604,7 @@ public class FantalkerServlet extends HttpServlet
 		String sig = API.generateSignature(params);
 				
 		String authorization = null;
-		authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + consumer_key
+		authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + API.consumer_key
 					+ "\",oauth_signature_method=\"HMAC-SHA1\""
 					+ ",oauth_timestamp=\"" + String.valueOf(timestamp) + "\""
 					+ ",oauth_nonce=\"" + String.valueOf(nonce) + "\""
@@ -623,7 +619,7 @@ public class FantalkerServlet extends HttpServlet
 		{
 			String errMsg = "出现错误，请重试";
 			Common.sendMessage(fromJID,errMsg);
-			log.warning(strJID + " :" + String.valueOf(response.getResponseCode()) + ": " + new String(response.getContent()));
+			Common.log.warning(strJID + " :" + String.valueOf(response.getResponseCode()) + ": " + new String(response.getContent()));
 			return;
 		}
 		
@@ -689,8 +685,13 @@ public class FantalkerServlet extends HttpServlet
 		else																	//-@ -WNEO5ZQt28 test t
 		{
 			int intIndex = strMessage.lastIndexOf(msgarr[1]) + msgarr[1].length() + 1;
+			Common.log.fine(String.valueOf(intIndex));
 			String replyMsg = strMessage.substring(intIndex);
 			response = api.statuses_reply(fromJID, replyMsg, msgarr[1]);
+			if(response == null)
+			{
+				return;
+			}
 			if(response.getResponseCode() == 200)
 			{
 				StatusJSON jsonStatus = new StatusJSON(new String(response.getContent()));
@@ -705,15 +706,16 @@ public class FantalkerServlet extends HttpServlet
 					
 				} catch (JSONException e) {
 					//e.printStackTrace();
-					log.warning(Common.getStrJID(fromJID) + " @:" + new String(response.getContent()));
+					Common.log.warning(Common.getStrJID(fromJID) + " @:" + new String(response.getContent()));
 					Common.sendMessage(fromJID,"未知错误");
 				}
 			}
 			else
 			{
 				Common.sendMessage(fromJID,"未知错误");
-				log.warning(Common.getStrJID(fromJID) + " rt:" + new String(response.getContent()));
+				Common.log.warning(Common.getStrJID(fromJID) + " rt:" + new String(response.getContent()));
 			}
+
 		}
 	}
 	
@@ -741,7 +743,7 @@ public class FantalkerServlet extends HttpServlet
 			cache.remove(strJID + ",access_token");
 			cache.remove(strJID + ",access_token_secret");
 		} catch (javax.cache.CacheException e){
-			log.info(strJID + ":JCache " + e.getMessage());
+			Common.log.info(strJID + ":JCache " + e.getMessage());
 		}
 		
 		Common.sendMessage(fromJID,"您已成功解除账号绑定，请使用-oauth命令再次绑定账号");
@@ -789,7 +791,7 @@ public class FantalkerServlet extends HttpServlet
 			else
 			{
 				Common.sendMessage(fromJID,Common.getError(new String(response.getContent())));
-				log.warning(Common.getStrJID(fromJID) + " rt:" + new String(response.getContent()));
+				Common.log.warning(Common.getStrJID(fromJID) + " rt:" + new String(response.getContent()));
 			}
 		}
 	}
@@ -818,7 +820,7 @@ public class FantalkerServlet extends HttpServlet
 		else
 		{
 			Common.sendMessage(fromJID,Common.getError(new String(response.getContent())));
-			log.warning(Common.getStrJID(fromJID) + "status.send: " + new String(response.getContent()));
+			Common.log.warning(Common.getStrJID(fromJID) + "status.send: " + new String(response.getContent()));
 		}
 	}
 	
@@ -843,7 +845,7 @@ public class FantalkerServlet extends HttpServlet
 		{
 			response = api.account_verify_credentials(fromJID);
 		}
-		else if(msgarr.length == 2)													//-u id
+		else if(msgarr.length == 2)												//-u id
 		{
 			response = api.users_show(fromJID, msgarr[1]);
 		}
@@ -887,7 +889,7 @@ public class FantalkerServlet extends HttpServlet
 		else
 		{
 			Common.sendMessage(fromJID,Common.getError(new String(response.getContent())));
-			log.warning(Common.getStrJID(fromJID) + "-u: " + new String(response.getContent()));
+			Common.log.warning(Common.getStrJID(fromJID) + "-u: " + new String(response.getContent()));
 		}
 	}
 
