@@ -403,28 +403,39 @@ public final class Common
 	 * xmpp中输出消息
 	 * @param fromJID 来源JID
 	 * @param jsonStatus StatusJSON对象
-	 * @param intType 消息类型,1时间线,2提到我的
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文
 	 * @param pageID 页码
 	 * @param lenght jsonStatus数组长度
 	 */
 	public static void showStatus(JID fromJID, StatusJSON[] jsonStatus, int intType, int length, String pageID)
 	{
 		String strMessage = null;
-		if(intType == 1)
+		if(intType ==4)
 		{
-			strMessage = "时间线: 第" + pageID + "页\n\n";
+			strMessage = "";
+			for(int i=0;i<length;i++)
+			{
+				strMessage = Common.StatusMessage(strMessage,jsonStatus[i]);
+			}
 		}
 		else
 		{
-			strMessage = "提到我的: 第" + pageID + "页\n\n";
-			if(pageID.equals("1"))
+			if(intType == 1)
 			{
-				setData(fromJID,"mention","last_id",jsonStatus[0].getID());
+				strMessage = "时间线: 第" + pageID + "页\n\n";
 			}
-		}
-		for(int i=(length-1);i>=0;i--)
-		{
-			strMessage = Common.StatusMessage(strMessage,jsonStatus[i]);
+			else
+			{
+				strMessage = "提到我的: 第" + pageID + "页\n\n";
+				if(pageID.equals("1"))
+				{
+					setData(fromJID,"mention","last_id",jsonStatus[0].getID());
+				}
+			}
+			for(int i=(length-1);i>=0;i--)
+			{
+				strMessage = Common.StatusMessage(strMessage,jsonStatus[i]);
+			}
 		}
 		sendMessage(fromJID,strMessage);
 	}
@@ -434,7 +445,7 @@ public final class Common
 	 * xmpp中输出消息
 	 * @param fromJID 来源JID
 	 * @param jsonStatus StatusJSON对象
-	 * @param intType 消息类型,1时间线,2提到我的
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文
 	 */
 	public static void showStatus(JID fromJID, StatusJSON[] jsonStatus, int intType, int length)
 	{
@@ -462,7 +473,7 @@ public final class Common
 	 * 处理显示状态的HTTPResponse对象
 	 * @param fromJID
 	 * @param response
-	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文
 	 * @param pageID 页码
 	 */
 	public static void StatusShowResp(JID fromJID, HTTPResponse response, int intType, String pageID)
@@ -487,7 +498,6 @@ public final class Common
 				}
 				showStatus(fromJID,jsonStatus,intType,arrlen,pageID);
 			} catch (JSONException e) {
-				//e.printStackTrace();
 				log.info("status.show.JSON " + e.getMessage());
 			}
 		}
