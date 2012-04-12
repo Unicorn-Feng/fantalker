@@ -17,8 +17,11 @@ FanTalker是部署在Google App Engine云计算平台上的基于xmpp的Google T
   * -ho/-home： 查看首页时间线 
   * -@/-r-/-reply：查看提到我的消息及 回复消息
   * -rt：转发消息
-  * -u： 查看用户信息
   * -m/-msg： 查看指定消息
+  * -u： 查看用户信息
+  * -fo/-follow: 将指定用户加为好友
+  * -unfo/-unfollow: 删除指定好友
+  * -del/-delete: 删除指定消息
   * -oauth： 开始OAuth认证
   * -bind： 绑定PIN码完成认证
   * -remove： 解除关联
@@ -35,25 +38,25 @@ FanTalker是部署在Google App Engine云计算平台上的基于xmpp的Google T
   * 转发消息
   * 查看用户信息
   * 查看指定消息
+  * 删除指定消息
+  * 添加与删除好友
+  * 定时提醒新的@提到我的消息
 
 
 ==计划中的功能==
 
-  # 删除消息
-  # XAuth认证
-  # 关注与取消关注用户
-  # 定时提醒新的@提到我的消息
   # 收藏消息
   # 查看关注者及好友
   # 发送、查看、删除私信
   # 加入、删除黑名单
   # 随便看看
   # 短ID
+  # XAuth认证
 
 
 ==其他说明==
 
-本程序不保存用户的密码信息，仅保存OAuth后返回的Access Token及Access Token Secret。通过XAuth协议认证时也不会保存您的密码信息。
+本程序不保存用户的密码信息，仅保存OAuth后返回的Access Token及Access Token Secret。
 本程序依照GPLv3协议开放源代码。
 
 若有任何问题您可以在饭否 [http://fanfou.com/weili27 @烽麒]，也可以发送邮件或GT联系 [mailto:fengqiwl@gmail.com fengqiwl@gmail.com] ，谢谢。
