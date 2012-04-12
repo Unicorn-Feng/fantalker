@@ -32,7 +32,6 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.logging.Logger;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import com.google.appengine.api.urlfetch.HTTPHeader;
@@ -56,7 +55,6 @@ public class API {
 	public static final String consumer_key = "4b6d4d676807ddb134b03e635e832baf";
 	public static final String consumer_secret = "83e014d54b2923b9d2f4440d18f226bf";
 	public static final String HMAC_SHA1 = "HmacSHA1";
-	public static final Logger log = Logger.getLogger("Fantalker");
 	
 	private String oauth_token;
 	private String oauth_token_secret;
@@ -155,6 +153,7 @@ public class API {
 	 */
 	public String generateAuthString(long timestamp, long nonce, String signature)
 	{
+		/*
 		String authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + consumer_key
 					+ "\",oauth_signature_method=\"HMAC-SHA1\""
 					+ ",oauth_timestamp=\"" + String.valueOf(timestamp) + "\""
@@ -162,6 +161,24 @@ public class API {
 					+ ",oauth_signature=\"" + signature + "\""
 					+ ",oauth_token=\"" + oauth_token + "\"";
 		return authorization;
+		*/
+		StringBuffer strBuf = new StringBuffer(280); 
+		strBuf.append("OAuth realm=\"Fantalker\",oauth_consumer_key=\"");
+		strBuf.append(consumer_key);
+		strBuf.append("\",oauth_signature_method=\"HMAC-SHA1\"");
+		strBuf.append(",oauth_timestamp=\"");
+		strBuf.append(timestamp);
+		strBuf.append("\"");
+		strBuf.append(",oauth_nonce=\"");
+		strBuf.append(nonce);
+		strBuf.append("\"");
+		strBuf.append(",oauth_signature=\"");
+		strBuf.append(signature);
+		strBuf.append("\"");
+		strBuf.append(",oauth_token=\"");
+		strBuf.append(oauth_token);
+		strBuf.append("\"");
+		return strBuf.toString();
 	}
 
 
@@ -368,7 +385,8 @@ public class API {
 		}
 		else
 		{
-			log.info(Common.getStrJID(fromJID) + "-r: " + new String(response.getContent()));
+			Common.sendMessage(fromJID,"回复失败:" + Common.getError(new String(response.getContent())));
+			Common.log.info(Common.getStrJID(fromJID) + "-r: " + Common.getError(new String(response.getContent())));
 			return null;
 		}
 	}
@@ -397,7 +415,7 @@ public class API {
 		}
 		else
 		{
-			log.info(Common.getStrJID(fromJID) + "-rt: " + new String(response.getContent()));
+			Common.log.info(Common.getStrJID(fromJID) + "-rt: " + new String(response.getContent()));
 			return null;
 		}
 	}
