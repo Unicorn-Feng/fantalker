@@ -228,7 +228,43 @@ public final class Common
 			return -1;
 	}
 
-
+	
+	/**
+	 * 获取用户设置
+	 * @param fromJID
+	 * @return Setting对象
+	 */
+	public static Setting getSetting(JID fromJID)
+	{
+		String strJID = getStrJID(fromJID);
+		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+		Key k = KeyFactory.createKey("setting", strJID);
+		Entity account;
+		try {
+			account = datastore.get(k);
+		} catch (EntityNotFoundException e) {
+			log.info(strJID + ":Entity " + e.getMessage());
+			return null;
+		}
+	
+		boolean dm;
+		boolean mention;
+		long time;
+		try {
+			dm = (Boolean) account.getProperty("dm");
+			mention = (Boolean) account.getProperty("mention");
+			time = (Long) account.getProperty("time");
+		}
+		catch (NullPointerException e)
+		{
+			log.info(strJID + ":setting " + e.toString());
+			return null;
+		}
+		Setting set = new Setting(dm,mention,time);
+		return set;
+	}
+	
+	
 	/**
 	 * 格式化时间
 	 * @param strdate UTC时间 "Mon Mar 26 09:28:48 +0000 2012"
@@ -398,7 +434,24 @@ public final class Common
 		}
 	}
 
+	
+	/**
+	 * 将用户设置存入datastore
+	 * @param fromJID
+	 * @param set Setting对象
+	 */
+	public static void setSetting(JID fromJID, Setting set)
+	{
+		String strJID = getStrJID(fromJID);
+		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+		Entity entity = new Entity("setting",strJID);
+		entity.setProperty("dm",set.getDm());
+		entity.setProperty("mention",set.getMention());
+		entity.setProperty("time",set.getTime());
+		datastore.put(entity);
+	}
 
+	
 	/**
 	 * xmpp中输出消息
 	 * @param fromJID 来源JID

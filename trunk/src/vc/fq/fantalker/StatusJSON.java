@@ -26,7 +26,6 @@
 
 package vc.fq.fantalker;
 
-import java.util.logging.Logger;
 import com.google.appengine.repackaged.org.json.JSONException;
 import com.google.appengine.repackaged.org.json.JSONObject;
 
@@ -37,7 +36,6 @@ import com.google.appengine.repackaged.org.json.JSONObject;
  */
 public class StatusJSON 
 {
-	public static final Logger log = Logger.getLogger("Fantalker");
 	private String created_at;
 	private String id;
 	private String text;
@@ -60,7 +58,7 @@ public class StatusJSON
 			
 		} catch (JSONException e) {
 			//e.printStackTrace();
-			log.info("status.show.JSON " + e.getMessage());
+			Common.log.info("status.show.JSON " + e.getMessage());
 		}
 	}
 	
@@ -80,7 +78,7 @@ public class StatusJSON
 			
 		} catch (JSONException e) {
 			//e.printStackTrace();
-			log.info("status.show.JSON " + e.getMessage());
+			Common.log.info("status.show.JSON " + e.getMessage());
 		}
 	}
 	
