@@ -144,6 +144,15 @@ public class FantalkerServlet extends HttpServlet
 			case 12:															//-unfo
 				doFollow(fromJID,msgarr,false);
 				break;
+			case 13:															//-on
+				doOn(fromJID);
+				break;
+			case 14:															//-off
+				doOff(fromJID);
+				break;
+			case 15:															//-time
+				//doTime(fromJID,msgarr);
+				//break;
 			case -1:															//未知命令
 			default:
 				Common.sendMessage(fromJID,"无效命令");
@@ -417,8 +426,11 @@ public class FantalkerServlet extends HttpServlet
 					+ "-m/-msg： 查看指定消息的上下文\n"
 					+ "-del/-delete： 删除指定消息\n"
 					+ "-u： 查看用户信息\n"
-					+ "-fo/-follow： 加指定用户为好友"
-					+ "-unfo/-unfollow： 删除指定好友"
+					+ "-fo/-follow： 加指定用户为好友\n"
+					+ "-unfo/-unfollow： 删除指定好友\n"
+					+ "-on： 开启定时提醒\n"
+					+ "-off： 关闭定时提醒\n"
+					//+ "-time： 设置定时提醒间隔\n"
 					+ "-oauth： 开始OAuth认证\n"
 					+ "-bind： 绑定PIN码完成认证\n"
 					+ "-remove： 解除关联\n"
@@ -469,6 +481,15 @@ public class FantalkerServlet extends HttpServlet
 				break;
 			case 12:															//-unfo
 				helpMsg = "用法: -unfo 用户ID或loginname\n删除指定好友\n";
+				break;
+			case 13:															//-on
+				helpMsg = "用法: -on\n开启定时提醒新的@提到我的消息\n";
+				break;
+			case 14:															//-off
+				helpMsg = "用法: -off\n关闭定时提醒新的@提到我的消息\n";
+				break;
+			case 15:															//-time
+				helpMsg = "用法: -time 时间\n设置定时提醒时间间隔，现阶段仅可为5的倍数\n";
 				break;
 			case -1:															//未知命令
 			default:
@@ -640,6 +661,34 @@ public class FantalkerServlet extends HttpServlet
 
 
 	/**
+	 * 执行 -on 命令开启自动提醒
+	 * @param fromJID
+	 * @throws IOException
+	 */
+	public void doOn(JID fromJID) throws IOException
+	{
+		Setting set = Common.getSetting(fromJID);
+		set.setMention(true);
+		Common.setSetting(fromJID, set);
+		Common.sendMessage(fromJID, "成功开启定时提醒新的@提到我的消息 功能");
+	}
+	
+	
+	/**
+	 * 执行-off 命令关闭自动提醒
+	 * @param fromJID
+	 * @throws IOException
+	 */
+	public void doOff(JID fromJID) throws IOException
+	{
+		Setting set = Common.getSetting(fromJID);
+		set.setMention(false);
+		Common.setSetting(fromJID, set);
+		Common.sendMessage(fromJID, "成功关闭定时提醒新的@提到我的消息 功能");
+	}
+	
+	
+	/**
 	 * 执行-@ 命令回复或获取回复
 	 * @param fromJID
 	 * @param msgarr 输入字符串数组
@@ -732,6 +781,10 @@ public class FantalkerServlet extends HttpServlet
 		String strJID = Common.getStrJID(fromJID);
 		Key k = KeyFactory.createKey("Account", strJID);
 		datastore.delete(k);
+		k = KeyFactory.createKey("mention",strJID);
+		datastore.delete(k);
+		k = KeyFactory.createKey("setting",strJID);
+		datastore.delete(k);
 		
 		GCache cache;
 		try{
@@ -739,6 +792,7 @@ public class FantalkerServlet extends HttpServlet
 			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
 			cache.remove(strJID + ",access_token");
 			cache.remove(strJID + ",access_token_secret");
+			cache.remove(strJID + ",last_id");
 		} catch (javax.cache.CacheException e){
 			Common.log.info(strJID + ":JCache " + e.getMessage());
 		}
@@ -819,6 +873,29 @@ public class FantalkerServlet extends HttpServlet
 			Common.sendMessage(fromJID,Common.getError(new String(response.getContent())));
 			Common.log.warning(Common.getStrJID(fromJID) + "status.send: " + new String(response.getContent()));
 		}
+	}
+	
+	
+	/**
+	 * 执行-time 命令设置定时提醒间隔
+	 * @param fromJID
+	 * @param strtime 字符串形式时间间隔
+	 * @throws IOException
+	 */
+	public void doTime(JID fromJID, String[] msgarr) throws IOException
+	{
+		if(msgarr.length == 1)
+		{
+			Common.sendMessage(fromJID, "无效命令");
+		}
+		if(!Common.isNumeric(msgarr[1]))
+		{
+			Common.sendMessage(fromJID, "无效命令");
+		}
+		long time = Long.parseLong(msgarr[1]);
+		Setting set = Common.getSetting(fromJID);
+		set.setTime(time);
+		Common.setSetting(fromJID, set);
 	}
 	
 	
@@ -922,6 +999,12 @@ public class FantalkerServlet extends HttpServlet
 			return 11;
 		else if(strCmd.equals("-unfo") || strCmd.equals("-unfollow"))			//取消关注
 			return 12;
+		else if(strCmd.equals("-on"))											//开启自动提醒
+			return 13;
+		else if(strCmd.equals("-off"))											//关闭自动提醒
+			return 14;
+		else if(strCmd.equals("-time"))											//设置自动更新间隔
+			return 15;
 		else																	//未知命令
 			return -1;
 	}
