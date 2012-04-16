@@ -456,7 +456,7 @@ public final class Common
 	 * xmpp中输出消息
 	 * @param fromJID 来源JID
 	 * @param jsonStatus StatusJSON对象
-	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看
 	 * @param pageID 页码
 	 * @param lenght jsonStatus数组长度
 	 */
@@ -476,6 +476,10 @@ public final class Common
 			if(intType == 1)
 			{
 				strMessage = "时间线: 第" + pageID + "页\n\n";
+			}
+			else if(intType == 5)
+			{
+				strMessage = "随便看看:\n\n";
 			}
 			else
 			{
