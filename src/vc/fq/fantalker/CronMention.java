@@ -81,6 +81,10 @@ public class CronMention extends HttpServlet
 	{
 		String last_mention_id = Common.getData(fromJID, "mention","last_id");
 		API api = Common.getAPI(fromJID);
+		if(api == null)
+		{
+			return;
+		}
 		HTTPResponse response = api.statuses_mentions(fromJID, null, last_mention_id);
 		Common.StatusShowResp(fromJID, response,3);
 	}

@@ -151,8 +151,11 @@ public class FantalkerServlet extends HttpServlet
 				doOff(fromJID);
 				break;
 			case 15:															//-time
-				//doTime(fromJID,msgarr);
-				//break;
+				doTime(fromJID,msgarr);
+				break;
+			case 16:															//-public
+				doPublic(fromJID);
+				break;
 			case -1:															//未知命令
 			default:
 				Common.sendMessage(fromJID,"无效命令");
@@ -421,6 +424,7 @@ public class FantalkerServlet extends HttpServlet
 			helpMsg = "Fantalker目前支持以下命令:\n"
 					+ "您可以通过-?/-h/-help COMMAND查询每条命令的详细用法（方括号代表参数可选）:\n"
 					+ "-ho/-home： 查看首页时间线\n"
+					+ "-pub/-public： 显示20条随便看看的消息\n"
 					+ "-@/-r-/-reply：查看提到我的消息及 回复消息\n"
 					+ "-rt：转发消息\n"
 					+ "-m/-msg： 查看指定消息的上下文\n"
@@ -490,6 +494,9 @@ public class FantalkerServlet extends HttpServlet
 				break;
 			case 15:															//-time
 				helpMsg = "用法: -time 时间\n设置定时提醒时间间隔，现阶段仅可为5的倍数\n";
+				break;
+			case 16:															//-public
+				helpMsg = "用法: -public\n显示20条随便看看的消息\n";
 				break;
 			case -1:															//未知命令
 			default:
@@ -685,6 +692,20 @@ public class FantalkerServlet extends HttpServlet
 		set.setMention(false);
 		Common.setSetting(fromJID, set);
 		Common.sendMessage(fromJID, "成功关闭定时提醒新的@提到我的消息 功能");
+	}
+	
+	
+	public void doPublic(JID fromJID) throws IOException
+	{
+		API api = Common.getAPI(fromJID);
+		if(api == null)
+		{
+			Common.sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
+			return;
+		}
+		HTTPResponse response;
+		response = api.statuses_public_timeline(fromJID);
+		Common.StatusShowResp(fromJID, response,5);
 	}
 	
 	
@@ -887,15 +908,23 @@ public class FantalkerServlet extends HttpServlet
 		if(msgarr.length == 1)
 		{
 			Common.sendMessage(fromJID, "无效命令");
+			return;
 		}
 		if(!Common.isNumeric(msgarr[1]))
 		{
 			Common.sendMessage(fromJID, "无效命令");
 		}
 		long time = Long.parseLong(msgarr[1]);
+		time = time / 5;
+		time = time * 5;														//将time设置为5的倍数
+		if(time == 0)
+		{
+			time = 5;
+		}
 		Setting set = Common.getSetting(fromJID);
 		set.setTime(time);
 		Common.setSetting(fromJID, set);
+		Common.sendMessage(fromJID, "成功设置间隔时间" + String.valueOf(time) + "分钟");
 	}
 	
 	
@@ -1005,6 +1034,8 @@ public class FantalkerServlet extends HttpServlet
 			return 14;
 		else if(strCmd.equals("-time"))											//设置自动更新间隔
 			return 15;
+		else if(strCmd.equals("-public") || strCmd.equals("-pub"))				//显示随便看看
+			return 16;
 		else																	//未知命令
 			return -1;
 	}

@@ -41,9 +41,6 @@ import com.google.appengine.api.urlfetch.HTTPResponse;
 import com.google.appengine.api.urlfetch.URLFetchService;
 import com.google.appengine.api.urlfetch.URLFetchServiceFactory;
 import com.google.appengine.api.xmpp.JID;
-import com.google.appengine.repackaged.org.json.JSONException;
-import com.google.appengine.repackaged.org.json.JSONObject;
-
 
 /**
  * 连接饭否API
@@ -392,6 +389,33 @@ public class API {
 		return 	statuses_mentions(fromJID,pageID,null);
 	}
 
+	
+	/**
+	 * 调用GET /statuses/public_timeline 显示20条随便看看的消息
+	 * @param fromJID
+	 * @return
+	 * @throws IOException
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse statuses_public_timeline(JID fromJID) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		URL url = new URL("http://api.fanfou.com/statuses/public_timeline.json");
+	
+		String params = generateParams(timestamp,nonce);
+		params = "GET&" + URLEncoder.encode(url.toString())
+					+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request;
+		request = new HTTPRequest(url,HTTPMethod.GET);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		return response;
+	}
+	
 
 	/**
 	 * 调用 POST /statuses/update 回复消息
