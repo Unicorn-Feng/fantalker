@@ -181,12 +181,12 @@ public class FantalkerServlet extends HttpServlet
 		
 		if(msgarr.length != 2)
 		{
-			Common.sendMessage(fromJID, "用法： -bind PIN码\n提供PIN码用以完成OAuth认证。PIN码可以通过访问用-oauth命令获取到的链接后获得。");
+			doHelp(fromJID,"bind");
 			return;
 		}
 		if(msgarr[1].isEmpty())
 		{
-			Common.sendMessage(fromJID, "用法： -bind PIN码\n提供PIN码用以完成OAuth认证。PIN码可以通过访问用-oauth命令获取到的链接后获得。");
+			doHelp(fromJID,"bind");
 			return;
 		}
 		String strJID = Common.getStrJID(fromJID);
@@ -215,6 +215,7 @@ public class FantalkerServlet extends HttpServlet
 		String sig = API.generateSignature(params);
 		
 		String authorization = null;
+		/*
 		authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + API.consumer_key
 					+ "\",oauth_signature_method=\"HMAC-SHA1\""
 					+ ",oauth_timestamp=\"" + String.valueOf(timestamp) + "\""
@@ -222,17 +223,36 @@ public class FantalkerServlet extends HttpServlet
 					+ ",oauth_signature=\"" + sig + "\""
 					+ ",oauth_token=\"" + oauth_token + "\""
 					+ ",oauth_verifier=\"" + strPIN + "\"";
+		*/
+		StringBuffer strBuf = new StringBuffer(280); 
+		strBuf.append("OAuth realm=\"Fantalker\",oauth_consumer_key=\"");
+		strBuf.append(API.consumer_key);
+		strBuf.append("\",oauth_signature_method=\"HMAC-SHA1\"");
+		strBuf.append(",oauth_timestamp=\"").append(timestamp).append("\"");
+		strBuf.append(",oauth_nonce=\"").append(nonce).append("\"");
+		strBuf.append(",oauth_signature=\"").append(sig).append("\"");
+		strBuf.append(",oauth_verifier=\"").append(strPIN).append("\"");
+		authorization = strBuf.toString();
 		
 		HTTPRequest request = new HTTPRequest(url,HTTPMethod.GET);
 		request.addHeader(new HTTPHeader("Authorization",authorization));
 		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
 		HTTPResponse response = service.fetch(request);
 		
-		if(response.getResponseCode() != 200)
+		if(response.getResponseCode() == 401)
 		{
-			String errMsg = "出现错误" + String.valueOf(response.getResponseCode()) + ": " + new String(response.getContent());
-			Common.sendMessage(fromJID,errMsg);
-			Common.log.warning(strJID + " :" + errMsg);
+			Common.sendMessage(fromJID, "Request Token无效，请重新使用-oauth命令获取request token及授权码");
+			Common.log.info(strJID + ":bind " + new String(response.getContent()));
+			return;
+		}
+		else if(response.getResponseCode() == 200)
+		{
+			//继续执行
+		}
+		else
+		{
+			Common.log.warning(strJID + ":bind " + String.valueOf(response.getResponseCode()) + new String(response.getContent()));
+			Common.sendMessage(fromJID, "出现未知错误，请重新绑定");
 			return;
 		}
 		
@@ -259,7 +279,7 @@ public class FantalkerServlet extends HttpServlet
 				JSONObject respJSON = new JSONObject(new String(response.getContent()));
 				id = respJSON.getString("id");
 			} catch (JSONException e) {
-				Common.log.info(strJID + ":JSONid " + e.getMessage());
+				Common.log.warning(strJID + ":JSONid " + e.getMessage());
 			}
 		}
 		if(id == null)															//失败重试
@@ -271,7 +291,7 @@ public class FantalkerServlet extends HttpServlet
 					JSONObject respJSON = new JSONObject(new String(response.getContent()));
 					id = respJSON.getString("id");
 				} catch (JSONException e) {
-					Common.log.info(strJID + ":JSONid " + e.getMessage());
+					Common.log.warning(strJID + ":JSONid " + e.getMessage());
 				}
 			}
 		}
@@ -328,12 +348,12 @@ public class FantalkerServlet extends HttpServlet
 		}
 		if(msgarr.length != 2)
 		{
-			Common.sendMessage(fromJID, "无效命令");
+			doHelp(fromJID,"del");
 			return;
 		}
 		if(msgarr[1].isEmpty())
 		{
-			Common.sendMessage(fromJID, "无效命令");
+			doHelp(fromJID,"del");
 			return;
 		}
 		HTTPResponse response;
@@ -377,12 +397,12 @@ public class FantalkerServlet extends HttpServlet
 		}
 		if(msgarr.length != 2)
 		{
-			Common.sendMessage(fromJID, "无效命令");
+			doHelp(fromJID,"fo");
 			return;
 		}
 		if(msgarr[1].isEmpty())
 		{
-			Common.sendMessage(fromJID, "无效命令");
+			doHelp(fromJID,"fo");
 			return;
 		}
 		HTTPResponse response;
@@ -506,13 +526,27 @@ public class FantalkerServlet extends HttpServlet
 		}
 		else
 		{
-			Common.sendMessage(fromJID,"无效命令");
+			doHelp(fromJID,"help");
 			return;
 		}
 		Common.sendMessage(fromJID,helpMsg);
 	}
 
+	
+	/**
+	 * 执行-help commond 显示指定命令的帮助信息
+	 * @param fromJID
+	 * @param commond 要显示帮助的命令
+	 */
+	public void doHelp(JID fromJID, String commond)
+	{
+		String[] msgarr = new String[2];
+		msgarr[0] = "-help";
+		msgarr[1] = commond;
+		doHelp(fromJID,msgarr);
+	}
 
+	
 	/**
 	 * 执行-home命令
 	 * @param fromJID
@@ -540,13 +574,13 @@ public class FantalkerServlet extends HttpServlet
 			ch = msgarr[1].charAt(0);
 			if(ch != 'p' && ch != 'P')
 			{
-				Common.sendMessage(fromJID,"无效命令");
+				doHelp(fromJID,"home");
 				return;
 			}
 			msgarr[1] = msgarr[1].substring(1);
 			if(!Common.isNumeric(msgarr[1]))
 			{
-				Common.sendMessage(fromJID,"无效命令");
+				doHelp(fromJID,"home");
 				return;
 			}
 			response = api.statuses_home_timeline(fromJID,msgarr[1]);
@@ -554,7 +588,7 @@ public class FantalkerServlet extends HttpServlet
 		}
 		else
 		{
-			Common.sendMessage(fromJID,"无效命令");
+			doHelp(fromJID,"home");
 		}
 	}
 
@@ -592,12 +626,12 @@ public class FantalkerServlet extends HttpServlet
 			else
 			{
 				Common.sendMessage(fromJID,Common.getError(new String(response.getContent())));
-				Common.log.warning(Common.getStrJID(fromJID) + "-msg: " + new String(response.getContent()));
+				Common.log.info(Common.getStrJID(fromJID) + "-msg: " + new String(response.getContent()));
 			}
 		}
 		else
 		{
-			Common.sendMessage(fromJID,"无效命令");
+			doHelp(fromJID,"m");
 		}
 	}
 
@@ -630,12 +664,14 @@ public class FantalkerServlet extends HttpServlet
 					+ "&" + URLEncoder.encode(params);
 		String sig = API.generateSignature(params);
 				
-		String authorization = null;
-		authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + API.consumer_key
-					+ "\",oauth_signature_method=\"HMAC-SHA1\""
-					+ ",oauth_timestamp=\"" + String.valueOf(timestamp) + "\""
-					+ ",oauth_nonce=\"" + String.valueOf(nonce) + "\""
-					+ ",oauth_signature=\"" + sig + "\"";
+		StringBuffer strBuf = new StringBuffer(250); 
+		strBuf.append("OAuth realm=\"Fantalker\",oauth_consumer_key=\"");
+		strBuf.append(API.consumer_key);
+		strBuf.append("\",oauth_signature_method=\"HMAC-SHA1\"");
+		strBuf.append(",oauth_timestamp=\"").append(timestamp).append("\"");
+		strBuf.append(",oauth_nonce=\"").append(nonce).append("\"");
+		strBuf.append(",oauth_signature=\"").append(sig).append("\"");
+		String authorization = strBuf.toString();
 		
 		HTTPRequest request = new HTTPRequest(url,HTTPMethod.GET);
 		request.addHeader(new HTTPHeader("Authorization",authorization));
@@ -752,7 +788,6 @@ public class FantalkerServlet extends HttpServlet
 		else																	//-@ -WNEO5ZQt28 test t
 		{
 			int intIndex = strMessage.lastIndexOf(msgarr[1]) + msgarr[1].length() + 1;
-			Common.log.fine(String.valueOf(intIndex));
 			String replyMsg = strMessage.substring(intIndex);
 			response = api.statuses_reply(fromJID, replyMsg, msgarr[1]);
 			if(response == null)
@@ -780,7 +815,7 @@ public class FantalkerServlet extends HttpServlet
 			else
 			{
 				Common.sendMessage(fromJID,"未知错误");
-				Common.log.warning(Common.getStrJID(fromJID) + " rt:" + new String(response.getContent()));
+				Common.log.info(Common.getStrJID(fromJID) + " rt:" + new String(response.getContent()));
 			}
 
 		}
@@ -841,7 +876,7 @@ public class FantalkerServlet extends HttpServlet
 		int msgarr_len = msgarr.length;
 		if(msgarr_len == 1)
 		{
-			Common.sendMessage(fromJID,"无效命令");
+			doHelp(fromJID,"rt");
 		}
 		else																	//-rt -WNEO5ZQt28 test t
 		{
@@ -863,7 +898,7 @@ public class FantalkerServlet extends HttpServlet
 			else
 			{
 				Common.sendMessage(fromJID,Common.getError(new String(response.getContent())));
-				Common.log.warning(Common.getStrJID(fromJID) + " rt:" + new String(response.getContent()));
+				Common.log.info(Common.getStrJID(fromJID) + " rt:" + new String(response.getContent()));
 			}
 		}
 	}
@@ -892,7 +927,7 @@ public class FantalkerServlet extends HttpServlet
 		else
 		{
 			Common.sendMessage(fromJID,Common.getError(new String(response.getContent())));
-			Common.log.warning(Common.getStrJID(fromJID) + "status.send: " + new String(response.getContent()));
+			Common.log.info(Common.getStrJID(fromJID) + "status.send: " + new String(response.getContent()));
 		}
 	}
 	
@@ -907,12 +942,12 @@ public class FantalkerServlet extends HttpServlet
 	{
 		if(msgarr.length == 1)
 		{
-			Common.sendMessage(fromJID, "无效命令");
+			doHelp(fromJID,"time");
 			return;
 		}
 		if(!Common.isNumeric(msgarr[1]))
 		{
-			Common.sendMessage(fromJID, "无效命令");
+			doHelp(fromJID,"time");
 		}
 		long time = Long.parseLong(msgarr[1]);
 		time = time / 5;
@@ -954,7 +989,7 @@ public class FantalkerServlet extends HttpServlet
 		}
 		else
 		{
-			Common.sendMessage(fromJID,"无效命令");
+			doHelp(fromJID,"u");
 			return;
 		}
 		
@@ -992,7 +1027,7 @@ public class FantalkerServlet extends HttpServlet
 		else
 		{
 			Common.sendMessage(fromJID,Common.getError(new String(response.getContent())));
-			Common.log.warning(Common.getStrJID(fromJID) + "-u: " + new String(response.getContent()));
+			Common.log.info(Common.getStrJID(fromJID) + "-u: " + new String(response.getContent()));
 		}
 	}
 

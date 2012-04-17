@@ -28,6 +28,7 @@ package vc.fq.fantalker;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.security.InvalidKeyException;
@@ -47,8 +48,8 @@ import com.google.appengine.api.xmpp.JID;
  * @author 烽麒 Unicorn-Feng
  * @link http://fq.vc
  */
-public class API {
-
+public class API 
+{
 	public static final String consumer_key = "4b6d4d676807ddb134b03e635e832baf";
 	public static final String consumer_secret = "83e014d54b2923b9d2f4440d18f226bf";
 	public static final String HMAC_SHA1 = "HmacSHA1";
@@ -76,7 +77,7 @@ public class API {
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/account.verify-credentials
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse account_verify_credentials(JID fromJID) throws IOException
+	public HTTPResponse account_verify_credentials(JID fromJID) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -91,7 +92,6 @@ public class API {
 		request.addHeader(new HTTPHeader("Authorization",authorization));
 		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
 		HTTPResponse response = service.fetch(request);
-		
 		return response;
 	}
 	
@@ -106,7 +106,7 @@ public class API {
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/friendships.destroy
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse friendships_create_destroy(JID fromJID, String id, boolean fo) throws IOException
+	public HTTPResponse friendships_create_destroy(JID fromJID, String id, boolean fo) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -150,31 +150,14 @@ public class API {
 	 */
 	public String generateAuthString(long timestamp, long nonce, String signature)
 	{
-		/*
-		String authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + consumer_key
-					+ "\",oauth_signature_method=\"HMAC-SHA1\""
-					+ ",oauth_timestamp=\"" + String.valueOf(timestamp) + "\""
-					+ ",oauth_nonce=\"" + String.valueOf(nonce) + "\""
-					+ ",oauth_signature=\"" + signature + "\""
-					+ ",oauth_token=\"" + oauth_token + "\"";
-		return authorization;
-		*/
 		StringBuffer strBuf = new StringBuffer(280); 
 		strBuf.append("OAuth realm=\"Fantalker\",oauth_consumer_key=\"");
 		strBuf.append(consumer_key);
 		strBuf.append("\",oauth_signature_method=\"HMAC-SHA1\"");
-		strBuf.append(",oauth_timestamp=\"");
-		strBuf.append(timestamp);
-		strBuf.append("\"");
-		strBuf.append(",oauth_nonce=\"");
-		strBuf.append(nonce);
-		strBuf.append("\"");
-		strBuf.append(",oauth_signature=\"");
-		strBuf.append(signature);
-		strBuf.append("\"");
-		strBuf.append(",oauth_token=\"");
-		strBuf.append(oauth_token);
-		strBuf.append("\"");
+		strBuf.append(",oauth_timestamp=\"").append(timestamp).append("\"");
+		strBuf.append(",oauth_nonce=\"").append(nonce).append("\"");
+		strBuf.append(",oauth_signature=\"").append(signature).append("\"");
+		strBuf.append(",oauth_token=\"").append(oauth_token).append("\"");
 		return strBuf.toString();
 	}
 
@@ -187,12 +170,13 @@ public class API {
 	 */
 	public String generateParams(long timestamp, long nonce)
 	{
-		String params = "oauth_consumer_key=" + consumer_key 
-						+ "&oauth_nonce=" + String.valueOf(nonce)
-						+ "&oauth_signature_method=HMAC-SHA1"
-						+ "&oauth_timestamp=" + String.valueOf(timestamp)
-						+ "&oauth_token=" + oauth_token;
-		return params;
+		StringBuffer strBuf = new StringBuffer(200); 
+		strBuf.append("oauth_consumer_key=").append(consumer_key);
+		strBuf.append("&oauth_nonce=").append(nonce);
+		strBuf.append("&oauth_signature_method=HMAC-SHA1");
+		strBuf.append("&oauth_timestamp=").append(timestamp);
+		strBuf.append("&oauth_token=").append(oauth_token);
+		return strBuf.toString();
 	}
 
 
@@ -205,7 +189,7 @@ public class API {
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.context-timeline
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_context_timeline(JID fromJID, String id) throws IOException
+	public HTTPResponse statuses_context_timeline(JID fromJID, String id) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -235,7 +219,7 @@ public class API {
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.destroy
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_destroy(JID fromJID, String id) throws IOException
+	public HTTPResponse statuses_destroy(JID fromJID, String id) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -270,7 +254,7 @@ public class API {
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.home-timeline
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_home_timeline(JID fromJID, String pageID) throws IOException
+	public HTTPResponse statuses_home_timeline(JID fromJID, String pageID) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -309,7 +293,7 @@ public class API {
 	 * @throws IOException
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.home-timeline
 	 */
-	public HTTPResponse statuses_home_timeline(JID fromJID) throws IOException
+	public HTTPResponse statuses_home_timeline(JID fromJID) throws IOException,SocketTimeoutException 
 	{
 		return statuses_home_timeline(fromJID,null);
 	}
@@ -325,7 +309,7 @@ public class API {
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_mentions(JID fromJID, String pageID, String since_id) throws IOException
+	public HTTPResponse statuses_mentions(JID fromJID, String pageID, String since_id) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -370,7 +354,7 @@ public class API {
 	 * @throws IOException 
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
 	 */
-	public HTTPResponse statuses_mentions(JID fromJID) throws IOException
+	public HTTPResponse statuses_mentions(JID fromJID) throws IOException,SocketTimeoutException 
 	{
 		return 	statuses_mentions(fromJID,null,null);
 	}
@@ -384,7 +368,7 @@ public class API {
 	 * @throws IOException 
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
 	 */
-	public HTTPResponse statuses_mentions(JID fromJID,String pageID) throws IOException
+	public HTTPResponse statuses_mentions(JID fromJID,String pageID) throws IOException,SocketTimeoutException 
 	{
 		return 	statuses_mentions(fromJID,pageID,null);
 	}
@@ -397,7 +381,7 @@ public class API {
 	 * @throws IOException
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_public_timeline(JID fromJID) throws IOException
+	public HTTPResponse statuses_public_timeline(JID fromJID) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -426,7 +410,7 @@ public class API {
 	 * @throws IOException
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
 	 */
-	public HTTPResponse statuses_reply(JID fromJID, String strMessage, String replyID) throws IOException
+	public HTTPResponse statuses_reply(JID fromJID, String strMessage, String replyID) throws IOException,SocketTimeoutException 
 	{
 		HTTPResponse response;
 		response = statuses_show(fromJID, replyID);
@@ -455,7 +439,7 @@ public class API {
 	 * @throws IOException
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
 	 */
-	public HTTPResponse statuses_repost(JID fromJID, String strMessage, String repostID) throws IOException
+	public HTTPResponse statuses_repost(JID fromJID, String strMessage, String repostID) throws IOException,SocketTimeoutException 
 	{
 		HTTPResponse response;
 		response = statuses_show(fromJID, repostID);
@@ -483,7 +467,7 @@ public class API {
 	 * @throws IOException
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
 	 */
-	public HTTPResponse statuses_send(JID fromJID, String strMessage) throws IOException
+	public HTTPResponse statuses_send(JID fromJID, String strMessage) throws IOException,SocketTimeoutException 
 	{
 		return statuses_update(fromJID,strMessage,null,null,null);
 	}
@@ -498,7 +482,7 @@ public class API {
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.show
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_show(JID fromJID, String id) throws IOException
+	public HTTPResponse statuses_show(JID fromJID, String id) throws IOException,SocketTimeoutException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -531,7 +515,7 @@ public class API {
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_update(JID fromJID, String strMessage, String replyID, String userID, String repostID) throws IOException
+	public HTTPResponse statuses_update(JID fromJID, String strMessage, String replyID, String userID, String repostID) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -593,7 +577,7 @@ public class API {
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/users.show
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse users_show(JID fromJID, String id) throws IOException
+	public HTTPResponse users_show(JID fromJID, String id) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -617,8 +601,8 @@ public class API {
     /**
      * Computes RFC 2104-compliant HMAC signature.
 	 * @author Yusuke Yamamoto - yusuke at mac.com
-	 * @see <a href="http://oauth.net/core/1.0/">OAuth Core 1.0</a>
 	 * @edit Unicorn-Feng
+	 * @see <a href="http://oauth.net/core/1.0/">OAuth Core 1.0</a>
      * @param data the data to be signed
      * @param access token secret
      * @return signature
