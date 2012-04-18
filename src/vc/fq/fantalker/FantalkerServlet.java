@@ -215,7 +215,7 @@ public class FantalkerServlet extends HttpServlet
 		String sig = API.generateSignature(params);
 		
 		String authorization = null;
-		/*
+		
 		authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + API.consumer_key
 					+ "\",oauth_signature_method=\"HMAC-SHA1\""
 					+ ",oauth_timestamp=\"" + String.valueOf(timestamp) + "\""
@@ -223,7 +223,8 @@ public class FantalkerServlet extends HttpServlet
 					+ ",oauth_signature=\"" + sig + "\""
 					+ ",oauth_token=\"" + oauth_token + "\""
 					+ ",oauth_verifier=\"" + strPIN + "\"";
-		*/
+		
+		/*
 		StringBuffer strBuf = new StringBuffer(280); 
 		strBuf.append("OAuth realm=\"Fantalker\",oauth_consumer_key=\"");
 		strBuf.append(API.consumer_key);
@@ -233,6 +234,7 @@ public class FantalkerServlet extends HttpServlet
 		strBuf.append(",oauth_signature=\"").append(sig).append("\"");
 		strBuf.append(",oauth_verifier=\"").append(strPIN).append("\"");
 		authorization = strBuf.toString();
+		*/
 		
 		HTTPRequest request = new HTTPRequest(url,HTTPMethod.GET);
 		request.addHeader(new HTTPHeader("Authorization",authorization));
@@ -710,6 +712,11 @@ public class FantalkerServlet extends HttpServlet
 	 */
 	public void doOn(JID fromJID) throws IOException
 	{
+		if(isOauth(fromJID))													//判断是否已绑定
+		{
+			Common.sendMessage(fromJID, "您尚未绑定账号，请使用-oauth命令绑定");
+			return;
+		}
 		Setting set = Common.getSetting(fromJID);
 		set.setMention(true);
 		Common.setSetting(fromJID, set);
@@ -724,6 +731,11 @@ public class FantalkerServlet extends HttpServlet
 	 */
 	public void doOff(JID fromJID) throws IOException
 	{
+		if(isOauth(fromJID))													//判断是否已绑定
+		{
+			Common.sendMessage(fromJID, "您尚未绑定账号，请使用-oauth命令绑定");
+			return;
+		}
 		Setting set = Common.getSetting(fromJID);
 		set.setMention(false);
 		Common.setSetting(fromJID, set);
