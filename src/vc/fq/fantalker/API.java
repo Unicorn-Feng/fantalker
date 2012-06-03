@@ -567,7 +567,91 @@ public class API
 		return response;
 	}
 
+	
+	/**
+	 * 调用 GET /statuses/user_timeline 浏览指定用户已发送消息
+	 * @param fromJID 来源JID
+	 * @param userID 目标用户的id
+	 * @param pageID 指定返回结果的页码
+	 * @return
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.user-timeline
+	 * @throws IOException
+	 */
+	@SuppressWarnings("deprecation")
+	public HTTPResponse statuses_user_timeline(JID fromJID, String userID, String pageID) throws IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		String strURL = "http://api.fanfou.com/statuses/user_timeline.json";
+	
+		String params = generateParams(timestamp,nonce);
+		if(userID != null)
+		{
+			params = params + "&id=" + userID;
+		}
+		if(pageID != null)
+		{
+			params = params + "&page=" + pageID;
+		}
+		
+		params = "GET&" + URLEncoder.encode(strURL)
+					+ "&" + URLEncoder.encode(params);
+		String sig = generateSignature(params,oauth_token_secret);
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request;
+		
+		if(userID == null && pageID == null)
+		{
+			request = new HTTPRequest(new URL(strURL),HTTPMethod.GET);
+		}
+		else if(userID == null && pageID != null)
+		{
+			strURL = strURL + "?page=" + pageID;
 
+		}
+		else if(userID != null && pageID == null)
+		{
+			strURL = strURL + "?id=" + userID;
+		}
+		else if(userID != null && pageID != null)
+		{
+			strURL = strURL + "?id=" + userID + "&page=" + pageID;
+		}
+		request = new HTTPRequest(new URL(strURL),HTTPMethod.GET);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		return response;
+	}
+
+	
+	/**
+	 * 调用 GET /statuses/user_timeline 浏览指定用户已发送消息
+	 * @param fromJID 来源JID
+	 * @return
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.user-timeline
+	 * @throws IOException
+	 */
+	public HTTPResponse statuses_user_timeline(JID fromJID) throws IOException
+	{
+		return statuses_user_timeline(fromJID, null, null);
+	}
+	
+	
+	/**
+	 * 调用 GET /statuses/user_timeline 浏览指定用户已发送消息
+	 * @param fromJID 来源JID
+	 * @param pageID 指定返回结果的页码
+	 * @return
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.user-timeline
+	 * @throws IOException
+	 */
+	public HTTPResponse statuses_user_timeline(JID fromJID, String pageID) throws IOException
+	{
+		return statuses_user_timeline(fromJID, null, pageID);
+	}
+	
+	
 	/**
 	 * 调用 GET /users/show 返回用户的信息
 	 * @param fromJID 来源JID

@@ -156,9 +156,13 @@ public class FantalkerServlet extends HttpServlet
 			case 16:															//-public
 				doPublic(fromJID);
 				break;
+			case 17:															//-timeline
+				doTimeLine(fromJID,msgarr);
+				break;
 			case -1:															//未知命令
 			default:
 				Common.sendMessage(fromJID,"无效命令");
+				System.out.println(intCmdID);
 				break;
 			}
 		}
@@ -223,19 +227,7 @@ public class FantalkerServlet extends HttpServlet
 					+ ",oauth_signature=\"" + sig + "\""
 					+ ",oauth_token=\"" + oauth_token + "\""
 					+ ",oauth_verifier=\"" + strPIN + "\"";
-		
-		/*
-		StringBuffer strBuf = new StringBuffer(280); 
-		strBuf.append("OAuth realm=\"Fantalker\",oauth_consumer_key=\"");
-		strBuf.append(API.consumer_key);
-		strBuf.append("\",oauth_signature_method=\"HMAC-SHA1\"");
-		strBuf.append(",oauth_timestamp=\"").append(timestamp).append("\"");
-		strBuf.append(",oauth_nonce=\"").append(nonce).append("\"");
-		strBuf.append(",oauth_signature=\"").append(sig).append("\"");
-		strBuf.append(",oauth_verifier=\"").append(strPIN).append("\"");
-		authorization = strBuf.toString();
-		*/
-		
+
 		HTTPRequest request = new HTTPRequest(url,HTTPMethod.GET);
 		request.addHeader(new HTTPHeader("Authorization",authorization));
 		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
@@ -448,6 +440,7 @@ public class FantalkerServlet extends HttpServlet
 					+ "-ho/-home： 查看首页时间线\n"
 					+ "-pub/-public： 显示20条随便看看的消息\n"
 					+ "-@/-r-/-reply：查看提到我的消息及 回复消息\n"
+					+ "-tl/-timeline： 查看指定用户已发送的消息\n"
 					+ "-rt：转发消息\n"
 					+ "-m/-msg： 查看指定消息的上下文\n"
 					+ "-del/-delete： 删除指定消息\n"
@@ -519,6 +512,12 @@ public class FantalkerServlet extends HttpServlet
 				break;
 			case 16:															//-public
 				helpMsg = "用法: -public\n显示20条随便看看的消息\n";
+				break;
+			case 17:															//-tl
+				helpMsg = "用法1: -timeline/-tl [p页码]\n"
+						+ "显示当前用户已发送的消息，页码可选\n命令如-@ p2\n"
+						+ "用法2: -timeline/-tl 用户ID [p页码]\n"
+						+ "显示用户ID所指定的用户已发送的消息，页码可选\n";
 				break;
 			case -1:															//未知命令
 			default:
@@ -712,7 +711,7 @@ public class FantalkerServlet extends HttpServlet
 	 */
 	public void doOn(JID fromJID) throws IOException
 	{
-		if(isOauth(fromJID))													//判断是否已绑定
+		if(Common.getData(fromJID,"access_token") == null)						//判断是否已绑定
 		{
 			Common.sendMessage(fromJID, "您尚未绑定账号，请使用-oauth命令绑定");
 			return;
@@ -731,7 +730,7 @@ public class FantalkerServlet extends HttpServlet
 	 */
 	public void doOff(JID fromJID) throws IOException
 	{
-		if(isOauth(fromJID))													//判断是否已绑定
+		if(Common.getData(fromJID,"access_token") == null)						//判断是否已绑定
 		{
 			Common.sendMessage(fromJID, "您尚未绑定账号，请使用-oauth命令绑定");
 			return;
@@ -947,7 +946,7 @@ public class FantalkerServlet extends HttpServlet
 	/**
 	 * 执行-time 命令设置定时提醒间隔
 	 * @param fromJID
-	 * @param strtime 字符串形式时间间隔
+	 * @param msgarr
 	 * @throws IOException
 	 */
 	public void doTime(JID fromJID, String[] msgarr) throws IOException
@@ -972,6 +971,68 @@ public class FantalkerServlet extends HttpServlet
 		set.setTime(time);
 		Common.setSetting(fromJID, set);
 		Common.sendMessage(fromJID, "成功设置间隔时间" + String.valueOf(time) + "分钟");
+	}
+	
+	
+	/**
+	 * 执行-tl 显示指定用户已发送的消息
+	 * @param fromJID
+	 * @param msgarr
+	 * @throws IOException
+	 */
+	public void doTimeLine(JID fromJID, String[] msgarr) throws IOException
+	{
+		API api = Common.getAPI(fromJID);
+		if(api == null)
+		{
+			Common.sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
+			return;
+		}
+		HTTPResponse response;
+		int msgarr_len = msgarr.length;
+		if(msgarr_len == 1)
+		{
+			response = api.statuses_user_timeline(fromJID);
+			Common.StatusShowResp(fromJID, response,6);
+		}
+		else if(msgarr_len == 2)												//-tl p2或-tl 用户ID
+		{
+			char ch;
+			ch = msgarr[1].charAt(0);
+			if(ch == 'p' || ch == 'P')
+			{
+				if(Common.isNumeric(msgarr[1].substring(1)))					//-tl p2
+				{
+					msgarr[1] = msgarr[1].substring(1);
+					response = api.statuses_user_timeline(fromJID, msgarr[1]);
+					Common.StatusShowResp(fromJID, response, 6, msgarr[1]);
+					return;
+				}
+			}
+			
+			response = api.statuses_user_timeline(fromJID, msgarr[1], null);
+			Common.StatusShowResp(fromJID, response, 6);
+		}
+		else if(msgarr_len == 3)												//-tl 用户ID p2
+		{
+			char ch;
+			ch = msgarr[2].charAt(0);
+			if(ch != 'p' && ch != 'P')
+			{
+				doHelp(fromJID,"timeline");
+			}
+			msgarr[2] = msgarr[2].substring(1);
+			if(!Common.isNumeric(msgarr[2]))
+			{
+				doHelp(fromJID,"timeline");
+			}
+			response = api.statuses_user_timeline(fromJID, msgarr[1], msgarr[2]);
+			Common.StatusShowResp(fromJID, response, 6, msgarr[2]);
+		}
+		else
+		{
+			doHelp(fromJID,"timeline");
+		}
 	}
 	
 	
@@ -1083,6 +1144,8 @@ public class FantalkerServlet extends HttpServlet
 			return 15;
 		else if(strCmd.equals("-public") || strCmd.equals("-pub"))				//显示随便看看
 			return 16;
+		else if(strCmd.equals("-timeline") || strCmd.equals("-tl"))				//显示指定用户已发送消息
+			return 17;
 		else																	//未知命令
 			return -1;
 	}

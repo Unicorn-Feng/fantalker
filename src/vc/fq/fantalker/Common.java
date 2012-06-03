@@ -456,7 +456,7 @@ public final class Common
 	 * xmpp中输出消息
 	 * @param fromJID 来源JID
 	 * @param jsonStatus StatusJSON对象
-	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看,6已发消息
 	 * @param pageID 页码
 	 * @param lenght jsonStatus数组长度
 	 */
@@ -480,6 +480,10 @@ public final class Common
 			else if(intType == 5)
 			{
 				strMessage = "随便看看:\n\n";
+			}
+			else if(intType == 6)
+			{
+				strMessage = "已发消息: 第" + pageID + "页\n\n";
 			}
 			else
 			{
@@ -530,7 +534,7 @@ public final class Common
 	 * 处理显示状态的HTTPResponse对象
 	 * @param fromJID
 	 * @param response
-	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看,6已发消息
 	 * @param pageID 页码
 	 */
 	public static void StatusShowResp(JID fromJID, HTTPResponse response, int intType, String pageID)

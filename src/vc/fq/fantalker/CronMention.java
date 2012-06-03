@@ -38,6 +38,7 @@ import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.Query;
 import com.google.appengine.api.urlfetch.HTTPResponse;
 import com.google.appengine.api.xmpp.JID;
+import com.google.appengine.api.xmpp.XMPPFailureException;
 import com.google.appengine.api.xmpp.XMPPService;
 import com.google.appengine.api.xmpp.XMPPServiceFactory;
 
@@ -62,11 +63,15 @@ public class CronMention extends HttpServlet
 		for (Entity result : pq.asIterable()) 
 		{
 			Key key = result.getKey();
-			JID fromJID = new JID(key.getName());
-			XMPPService xmpp = XMPPServiceFactory.getXMPPService();
-			if(xmpp.getPresence(fromJID).isAvailable())
-			{
-				doCheckMention(fromJID);
+			try{
+				JID fromJID = new JID(key.getName());
+				XMPPService xmpp = XMPPServiceFactory.getXMPPService();
+				if(xmpp.getPresence(fromJID).isAvailable())
+				{
+					doCheckMention(fromJID);
+				}
+			} catch(XMPPFailureException e){
+				Common.log.warning(key.getName() + ":cromn " + e.getMessage());
 			}
 		}
 	}
