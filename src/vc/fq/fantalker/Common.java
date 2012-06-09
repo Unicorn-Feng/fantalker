@@ -26,6 +26,7 @@
 
 package vc.fq.fantalker;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
@@ -47,9 +48,10 @@ import com.google.appengine.api.xmpp.MessageBuilder;
 import com.google.appengine.api.xmpp.SendResponse;
 import com.google.appengine.api.xmpp.XMPPService;
 import com.google.appengine.api.xmpp.XMPPServiceFactory;
-import com.google.appengine.repackaged.org.json.JSONArray;
-import com.google.appengine.repackaged.org.json.JSONException;
-import com.google.appengine.repackaged.org.json.JSONObject;
+import com.google.appengine.labs.repackaged.org.json.JSONArray;
+import com.google.appengine.labs.repackaged.org.json.JSONException;
+import com.google.appengine.labs.repackaged.org.json.JSONObject;
+
 
 /**
  * 公共函数类
@@ -451,6 +453,72 @@ public final class Common
 		datastore.put(entity);
 	}
 
+	
+	/**
+	 * 将通过OAuth或XAuth获取到的Access Token存入数据库并记录用户名
+	 * @param fromJID
+	 * @param oauth_token
+	 * @param oauth_token_secret
+	 * @throws IOException 
+	 */
+	public static void setToken(JID fromJID, String oauth_token, String oauth_token_secret) throws IOException
+	{
+		String strJID = Common.getStrJID(fromJID);
+		
+		/* 将接收到的Request Token存入数据库 */
+		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
+		Entity account = new Entity("Account",strJID);
+		account.setProperty("access_token", oauth_token);
+		account.setProperty("access_token_secret",oauth_token_secret);
+		
+		API api = new API(oauth_token,oauth_token_secret);
+		HTTPResponse response = api.account_verify_credentials(fromJID);
+		String id = null;
+		if(response.getResponseCode() == 200)
+		{
+			try {
+				JSONObject respJSON = new JSONObject(new String(response.getContent()));
+				id = respJSON.getString("id");
+			} catch (JSONException e) {
+				Common.log.warning(strJID + ":JSONid " + e.getMessage());
+			}
+		}
+		
+		if(id == null)
+		{
+			datastore.put(account);
+			Common.sendMessage(fromJID,"成功绑定，但在获取饭否ID时出现未知错误");
+			Common.log.warning(strJID + ": " + new String(response.getContent()));
+		}
+		else
+		{
+			account.setProperty("id", id);
+			datastore.put(account);
+			Common.sendMessage(fromJID,"成功与饭否账号 " + id + " 绑定");
+		}
+		
+		/* 保存设置信息到datastore */
+		Entity entity = new Entity("setting",strJID);
+		entity.setProperty("mention", true);
+		entity.setProperty("dm",true);
+		entity.setProperty("time", 5);
+		datastore.put(entity);
+		
+		/* 将数据写入MemCache中 */
+		GCache cache;
+		try{
+			GCacheFactory cacheFactory = (GCacheFactory) CacheManager.getInstance().getCacheFactory();
+			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
+			cache.put(strJID + ",access_token",oauth_token);
+			cache.put(strJID + ",access_token_secret",oauth_token_secret);
+			cache.put(strJID + "mention", true);
+			cache.put(strJID + "dm", true);
+			cache.put(strJID + "time", 5);
+		} catch (javax.cache.CacheException e){
+			Common.log.info(strJID + ":JCache " + e.getMessage());
+		}
+	}
+	
 	
 	/**
 	 * xmpp中输出消息

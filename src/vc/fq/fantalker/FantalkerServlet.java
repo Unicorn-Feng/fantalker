@@ -35,7 +35,6 @@ import javax.servlet.http.*;
 import com.google.appengine.api.memcache.stdimpl.GCache;
 import com.google.appengine.api.datastore.DatastoreService;
 import com.google.appengine.api.datastore.DatastoreServiceFactory;
-import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.KeyFactory;
 import com.google.appengine.api.memcache.stdimpl.GCacheFactory;
@@ -49,9 +48,8 @@ import com.google.appengine.api.xmpp.JID;
 import com.google.appengine.api.xmpp.Message;
 import com.google.appengine.api.xmpp.XMPPService;
 import com.google.appengine.api.xmpp.XMPPServiceFactory;
-import com.google.appengine.repackaged.org.json.JSONArray;
-import com.google.appengine.repackaged.org.json.JSONException;
-import com.google.appengine.repackaged.org.json.JSONObject;
+import com.google.appengine.labs.repackaged.org.json.JSONException;
+import com.google.appengine.labs.repackaged.org.json.JSONObject;
 
 
 /**
@@ -109,7 +107,7 @@ public class FantalkerServlet extends HttpServlet
 			switch (intCmdID)
 			{
 			case 1:																//-oauth
-				doOauth(fromJID);
+				doOauth(fromJID,msgarr);
 				break;
 			case 2:																//-bind
 				doBind(fromJID,msgarr);
@@ -193,15 +191,19 @@ public class FantalkerServlet extends HttpServlet
 			doHelp(fromJID,"bind");
 			return;
 		}
-		String strJID = Common.getStrJID(fromJID);
 		String strPIN = msgarr[1];
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
 		URL url = new URL("http://fanfou.com/oauth/access_token");
 
 		String oauth_token = Common.getData(fromJID,"request_token");
-		if(oauth_token == null | oauth_token.isEmpty())
-		{
+		try {
+			if(oauth_token == null | oauth_token.isEmpty())
+			{
+				Common.sendMessage(fromJID,"未找到有效的Request Token\n请先使用-oauth命令获取PIN码。");
+				return;
+			}
+		} catch (NullPointerException e) {
 			Common.sendMessage(fromJID,"未找到有效的Request Token\n请先使用-oauth命令获取PIN码。");
 			return;
 		}
@@ -233,20 +235,20 @@ public class FantalkerServlet extends HttpServlet
 		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
 		HTTPResponse response = service.fetch(request);
 		
-		if(response.getResponseCode() == 401)
-		{
-			Common.sendMessage(fromJID, "Request Token无效，请重新使用-oauth命令获取request token及授权码");
-			Common.log.info(strJID + ":bind " + new String(response.getContent()));
-			return;
-		}
-		else if(response.getResponseCode() == 200)
+		if(response.getResponseCode() == 200)
 		{
 			//继续执行
 		}
+		else if(response.getResponseCode() == 401)
+		{
+			Common.sendMessage(fromJID, "PIN码无效,请使用-oauth命令重新获取PIN码");
+			Common.log.info(Common.getStrJID(fromJID) + " bind:" + new String(response.getContent()));
+			return;
+		}
 		else
 		{
-			Common.log.warning(strJID + ":bind " + String.valueOf(response.getResponseCode()) + new String(response.getContent()));
-			Common.sendMessage(fromJID, "出现未知错误，请重新绑定");
+			Common.sendMessage(fromJID,"未知错误,请重试");
+			Common.log.info(Common.getStrJID(fromJID) + " bind:" + new String(response.getContent()));
 			return;
 		}
 		
@@ -257,72 +259,8 @@ public class FantalkerServlet extends HttpServlet
 		oauth_token = tokenarr2[1];
 		tokenarr2 = tokenarr[1].split("=");
 		String oauth_token_secret = tokenarr2[1];
-		
-		/* 将接收到的Request Token存入数据库 */
-		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
-		Entity account = new Entity("Account",strJID);
-		account.setProperty("access_token", oauth_token);
-		account.setProperty("access_token_secret",oauth_token_secret);
-		
-		API api = new API(oauth_token,oauth_token_secret);
-		response = api.account_verify_credentials(fromJID);
-		String id = null;
-		if(response.getResponseCode() == 200)
-		{
-			try {
-				JSONObject respJSON = new JSONObject(new String(response.getContent()));
-				id = respJSON.getString("id");
-			} catch (JSONException e) {
-				Common.log.warning(strJID + ":JSONid " + e.getMessage());
-			}
-		}
-		if(id == null)															//失败重试
-		{
-			response = api.account_verify_credentials(fromJID);
-			if(response.getResponseCode() == 200)
-			{
-				try {
-					JSONObject respJSON = new JSONObject(new String(response.getContent()));
-					id = respJSON.getString("id");
-				} catch (JSONException e) {
-					Common.log.warning(strJID + ":JSONid " + e.getMessage());
-				}
-			}
-		}
-		
-		if(id == null)
-		{
-			datastore.put(account);
-			Common.sendMessage(fromJID,"成功绑定，但在获取饭否ID时出现未知错误");
-			Common.log.warning(strJID + ": " + new String(response.getContent()));
-		}
-		else
-		{
-			account.setProperty("id", id);
-			datastore.put(account);
-			Common.sendMessage(fromJID,"成功与饭否账号 " + id + " 绑定");
-		}
-		
-		/* 保存设置信息到datastore */
-		Entity entity = new Entity("setting",strJID);
-		entity.setProperty("mention", true);
-		entity.setProperty("dm",true);
-		entity.setProperty("time", 5);
-		datastore.put(entity);
-		
-		/* 将数据写入MemCache中 */
-		GCache cache;
-		try{
-			GCacheFactory cacheFactory = (GCacheFactory) CacheManager.getInstance().getCacheFactory();
-			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
-			cache.put(strJID + ",access_token",oauth_token);
-			cache.put(strJID + ",access_token_secret",oauth_token_secret);
-			cache.put(strJID + "mention", true);
-			cache.put(strJID + "dm", true);
-			cache.put(strJID + "time", 5);
-		} catch (javax.cache.CacheException e){
-			Common.log.info(strJID + ":JCache " + e.getMessage());
-		}
+
+		Common.setToken(fromJID, oauth_token, oauth_token_secret);
 	}
 	
 	
@@ -450,7 +388,7 @@ public class FantalkerServlet extends HttpServlet
 					+ "-on： 开启定时提醒\n"
 					+ "-off： 关闭定时提醒\n"
 					//+ "-time： 设置定时提醒间隔\n"
-					+ "-oauth： 开始OAuth认证\n"
+					+ "-oauth： 开始OAuth认证或进行XAuth认证\n"
 					+ "-bind： 绑定PIN码完成认证\n"
 					+ "-remove： 解除关联\n"
 					+ "-?/-h/-help： 显示本帮助\n"
@@ -463,7 +401,10 @@ public class FantalkerServlet extends HttpServlet
 			switch (getCmdID(msgarr[1]))
 			{
 			case 1:																//-oauth
-				helpMsg = "用法: -oauth\n获取用于OAuth的链接\n";
+				helpMsg = "用法1: -oauth\n获取用于OAuth的链接\n"
+						+ "用法2: -oauth 用户名 密码\n"
+						+ "使用XAuth方式认证，免去登陆饭否网站认证的过程。\n"
+						+ "您的用户名密码用于提交至饭否完成认证，本程序不保存您的密码信息\n";
 				break;
 			case 2:																//-bind
 				helpMsg = "用法: -bind PIN码\n提供PIN码用以完成OAuth认证。PIN码可以通过访问用-oauth命令获取到的链接后获得\n";
@@ -640,10 +581,11 @@ public class FantalkerServlet extends HttpServlet
 	/**
 	 * 执行-oauth命令完成认证
 	 * @param fromJID 来源JID
+	 * @param msgarr
 	 * @throws IOException
 	 */
 	@SuppressWarnings("deprecation")
-	public void doOauth(JID fromJID) throws IOException
+	public void doOauth(JID fromJID, String[] msgarr) throws IOException
 	{
 		if(isOauth(fromJID))													//判断是否已绑定
 		{
@@ -653,54 +595,121 @@ public class FantalkerServlet extends HttpServlet
 		String strJID = Common.getStrJID(fromJID);
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
-		URL url = new URL("http://fanfou.com/oauth/request_token");
-	
 		String params = null;
-		params = "oauth_consumer_key=" + API.consumer_key 
+		String authorization;
+		
+		if(msgarr.length == 1)													//OAuth
+		{
+			URL url = new URL("http://fanfou.com/oauth/request_token");
+		
+			params = "oauth_consumer_key=" + API.consumer_key 
+						+ "&oauth_nonce=" + String.valueOf(nonce)
+						+ "&oauth_signature_method=HMAC-SHA1"
+						+ "&oauth_timestamp=" + String.valueOf(timestamp);
+		
+			params = "GET&" + URLEncoder.encode(url.toString())
+						+ "&" + URLEncoder.encode(params);
+			String sig = API.generateSignature(params);
+					
+			StringBuffer strBuf = new StringBuffer(250); 
+			strBuf.append("OAuth realm=\"Fantalker\",oauth_consumer_key=\"");
+			strBuf.append(API.consumer_key);
+			strBuf.append("\",oauth_signature_method=\"HMAC-SHA1\"");
+			strBuf.append(",oauth_timestamp=\"").append(timestamp).append("\"");
+			strBuf.append(",oauth_nonce=\"").append(nonce).append("\"");
+			strBuf.append(",oauth_signature=\"").append(sig).append("\"");
+			authorization = strBuf.toString();
+			
+			HTTPRequest request = new HTTPRequest(url,HTTPMethod.GET);
+			request.addHeader(new HTTPHeader("Authorization",authorization));
+			URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+			HTTPResponse response = service.fetch(request);
+			
+			if(response.getResponseCode() != 200)
+			{
+				String errMsg = "出现错误，请重试";
+				Common.sendMessage(fromJID,errMsg);
+				Common.log.warning(strJID + " :" + String.valueOf(response.getResponseCode()) + ": " + new String(response.getContent()));
+				return;
+			}
+			
+			/* 提取接收到的未经授权的Request Token */
+			String tokenstring = new String(response.getContent());
+			String[] tokenarr = tokenstring.split("&");
+			String[] tokenarr2 = tokenarr[0].split("=");
+			String oauth_token = tokenarr2[1];
+			Common.setData(fromJID,"Account","request_token",oauth_token);
+			
+			/* 请求用户授权Request Token */
+			String strMessage = "请访问以下网址获取PIN码: \n http://fanfou.com/oauth/authorize?oauth_token="
+						+ oauth_token + "&oauth_callback=oob"
+						+ " \n 手机用户请访问: \n http://m.fanfou.com/oauth/authorize?oauth_token="
+						+ oauth_token + "&oauth_callback=oob"
+						+ " \n 然后使用\"-bind PIN码\"命令绑定账号。";
+			Common.sendMessage(fromJID,strMessage);
+		}
+		else if(msgarr.length == 3)												//XAuth
+		{
+			URL url = new URL("http://fanfou.com/oauth/access_token");
+			String username = msgarr[1];
+			String password = msgarr[2];
+			params = "oauth_consumer_key=" + API.consumer_key
 					+ "&oauth_nonce=" + String.valueOf(nonce)
 					+ "&oauth_signature_method=HMAC-SHA1"
-					+ "&oauth_timestamp=" + String.valueOf(timestamp);
-	
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
-		String sig = API.generateSignature(params);
-				
-		StringBuffer strBuf = new StringBuffer(250); 
-		strBuf.append("OAuth realm=\"Fantalker\",oauth_consumer_key=\"");
-		strBuf.append(API.consumer_key);
-		strBuf.append("\",oauth_signature_method=\"HMAC-SHA1\"");
-		strBuf.append(",oauth_timestamp=\"").append(timestamp).append("\"");
-		strBuf.append(",oauth_nonce=\"").append(nonce).append("\"");
-		strBuf.append(",oauth_signature=\"").append(sig).append("\"");
-		String authorization = strBuf.toString();
+					+ "&oauth_timestamp=" + String.valueOf(timestamp)
+					+ "&x_auth_username=" + username
+					+ "&x_auth_password=" + password
+					+ "&x_auth_mode=client_auth";
 		
-		HTTPRequest request = new HTTPRequest(url,HTTPMethod.GET);
-		request.addHeader(new HTTPHeader("Authorization",authorization));
-		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
-		HTTPResponse response = service.fetch(request);
-		
-		if(response.getResponseCode() != 200)
-		{
-			String errMsg = "出现错误，请重试";
-			Common.sendMessage(fromJID,errMsg);
-			Common.log.warning(strJID + " :" + String.valueOf(response.getResponseCode()) + ": " + new String(response.getContent()));
-			return;
+			params = "GET&" + URLEncoder.encode(url.toString())
+						+ "&" + URLEncoder.encode(params);
+			String sig = API.generateSignature(params);
+			
+			authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + API.consumer_key
+						+ "\",oauth_signature_method=\"HMAC-SHA1\""
+						+ ",oauth_timestamp=\"" + String.valueOf(timestamp) + "\""
+						+ ",oauth_nonce=\"" + String.valueOf(nonce) + "\""
+						+ ",oauth_signature=\"" + sig + "\""
+						+ ",x_auth_username=\"" + username + "\""
+						+ ",x_auth_password=\"" + password + "\""
+						+ ",x_auth_mode=\"client_auth\"";
+			
+			
+			HTTPRequest request = new HTTPRequest(url,HTTPMethod.GET);
+			request.addHeader(new HTTPHeader("Authorization",authorization));
+			URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+			HTTPResponse response = service.fetch(request);
+			
+			if(response.getResponseCode() == 200)
+			{
+				//继续执行
+			}
+			else if(response.getResponseCode() == 401)
+			{
+				Common.sendMessage(fromJID, "用户名或密码错误,请重试");
+				return;
+			}
+			else
+			{
+				Common.sendMessage(fromJID,"未知错误，请重试");
+				Common.log.info(Common.getStrJID(fromJID) + " xauth:" + new String(response.getContent()));
+				return;
+			}
+			
+			/* 提取接收到的未经授权的Request Token */
+			String tokenstring = new String(response.getContent());
+			String[] tokenarr = tokenstring.split("&");
+			String[] tokenarr2 = tokenarr[0].split("=");
+			String oauth_token = tokenarr2[1];
+			tokenarr2 = tokenarr[1].split("=");
+			String oauth_token_secret = tokenarr2[1];
+
+			Common.setToken(fromJID, oauth_token, oauth_token_secret);
 		}
-		
-		/* 提取接收到的未经授权的Request Token */
-		String tokenstring = new String(response.getContent());
-		String[] tokenarr = tokenstring.split("&");
-		String[] tokenarr2 = tokenarr[0].split("=");
-		String oauth_token = tokenarr2[1];
-		Common.setData(fromJID,"Account","request_token",oauth_token);
-		
-		/* 请求用户授权Request Token */
-		String strMessage = "请访问以下网址获取PIN码: \n http://fanfou.com/oauth/authorize?oauth_token="
-					+ oauth_token + "&oauth_callback=oob"
-					+ " \n 手机用户请访问: \n http://m.fanfou.com/oauth/authorize?oauth_token="
-					+ oauth_token + "&oauth_callback=oob"
-					+ " \n 然后使用\"-bind PIN码\"命令绑定账号。";
-		Common.sendMessage(fromJID,strMessage);
+		else
+		{
+			doHelp(fromJID,"oauth");
+		}
 	}
 
 
