@@ -27,10 +27,9 @@
 package vc.fq.fantalker;
 
 import java.util.logging.Logger;
-import com.google.appengine.repackaged.org.json.JSONArray;
-import com.google.appengine.repackaged.org.json.JSONException;
-import com.google.appengine.repackaged.org.json.JSONObject;
 
+import com.google.appengine.labs.repackaged.org.json.JSONException;
+import com.google.appengine.labs.repackaged.org.json.JSONObject;
 
 /**
  * 用于处理users.show的返回json

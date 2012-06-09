@@ -26,8 +26,9 @@
 
 package vc.fq.fantalker;
 
-import com.google.appengine.repackaged.org.json.JSONException;
-import com.google.appengine.repackaged.org.json.JSONObject;
+import com.google.appengine.labs.repackaged.org.json.JSONException;
+import com.google.appengine.labs.repackaged.org.json.JSONObject;
+
 
 /**
  * 用于处理status.show的返回json
