@@ -160,7 +160,6 @@ public class FantalkerServlet extends HttpServlet
 			case -1:															//未知命令
 			default:
 				Common.sendMessage(fromJID,"无效命令");
-				System.out.println(intCmdID);
 				break;
 			}
 		}
@@ -288,8 +287,18 @@ public class FantalkerServlet extends HttpServlet
 			doHelp(fromJID,"del");
 			return;
 		}
+		String id = msgarr[1];
+		if(id.length()<=2)
+		{
+			id = Common.shortID2ID(fromJID, id);
+			if(id == null)
+			{
+				Common.sendMessage(fromJID,"找不到该短ID对应的长ID,请重新输入或使用长ID");
+				return;
+			}
+		}
 		HTTPResponse response;
-		response = api.statuses_destroy(fromJID, msgarr[1]);
+		response = api.statuses_destroy(fromJID, id);
 		String strmessage;
 		if(response.getResponseCode() == 200)
 		{
@@ -392,6 +401,8 @@ public class FantalkerServlet extends HttpServlet
 					+ "-bind： 绑定PIN码完成认证\n"
 					+ "-remove： 解除关联\n"
 					+ "-?/-h/-help： 显示本帮助\n"
+					+ "\n消息格式:\n"
+					+ "*作者*: 消息内容\n [ 消息长ID = 短ID ] 年-月-日 时:分:秒 <- 消息来源\n"
 					+ "\n如果在使用中发现有BUG，请及时联系我@烽麒 谢谢～";
 		}
 		else if(msgarr.length == 2)
@@ -417,7 +428,7 @@ public class FantalkerServlet extends HttpServlet
 				break;
 			case 5:																//-reply/-@
 				helpMsg = "用法1: -@/-r/-reply 消息ID 内容\n"
-						+ "回复消息ID所指定的消息\n"
+						+ "回复消息ID所指定的消息，消息ID可为长ID也可为短ID\n"
 						+ "用法2: -@/-r/-reply [p页码]\n"
 						+ "显示@你的消息，页码可选\n命令如-@ p2\n";
 				break;
@@ -425,16 +436,16 @@ public class FantalkerServlet extends HttpServlet
 				helpMsg = "用法: -home [p页码]\n显示时间线，页码可选\n";
 				break;
 			case 7:																//-msg
-				helpMsg = "用法: -msg 消息ID\n显示消息ID所指定的消息及其上下文\n";
+				helpMsg = "用法: -msg 消息ID\n显示消息ID所指定的消息及其上下文，消息ID可为长ID也可为短ID\n";
 				break;
 			case 8:																//-rt
-				helpMsg = "用法: -rt 消息ID [内容]\n转发指定消息ID的消息，内容可选\n";
+				helpMsg = "用法: -rt 消息ID [内容]\n转发指定消息ID的消息，内容可选，消息ID可为长ID也可为短ID\n";
 				break;
 			case 9:																//-u
 				helpMsg = "用法: -u [用户id]\n显示指定用户的详细信息，不加参数则显示已绑定用户的信息\n";
 				break;
 			case 10:															//-del
-				helpMsg = "用法: -del 消息ID\n删除指定消息\n";
+				helpMsg = "用法: -del 消息ID\n删除指定消息，消息ID可为长ID也可为短ID\n";
 				break;
 			case 11:															//-fo
 				helpMsg = "用法: -fo 用户ID或loginname\n添加指定用户为好友\n";
@@ -551,8 +562,18 @@ public class FantalkerServlet extends HttpServlet
 		}
 		if(msgarr.length == 2)													//-m 7rXy196_C3k
 		{
+			String id = msgarr[1];
+			if(id.length()<=2)
+			{
+				id = Common.shortID2ID(fromJID, id);
+				if(id == null)
+				{
+					Common.sendMessage(fromJID,"找不到该短ID对应的长ID,请重新输入或使用长ID");
+					return;
+				}
+			}
 			HTTPResponse response;
-			response = api.statuses_context_timeline(fromJID, msgarr[1]);
+			response = api.statuses_context_timeline(fromJID, id);
 			if(response.getResponseCode() == 200)
 			{
 				Common.StatusShowResp(fromJID, response,4);
@@ -695,16 +716,20 @@ public class FantalkerServlet extends HttpServlet
 				Common.log.info(Common.getStrJID(fromJID) + " xauth:" + new String(response.getContent()));
 				return;
 			}
-			
-			/* 提取接收到的未经授权的Request Token */
-			String tokenstring = new String(response.getContent());
-			String[] tokenarr = tokenstring.split("&");
-			String[] tokenarr2 = tokenarr[0].split("=");
-			String oauth_token = tokenarr2[1];
-			tokenarr2 = tokenarr[1].split("=");
-			String oauth_token_secret = tokenarr2[1];
+			try {
+				/* 提取接收到的未经授权的Request Token */
+				String tokenstring = new String(response.getContent());
+				String[] tokenarr = tokenstring.split("&");
+				String[] tokenarr2 = tokenarr[0].split("=");
+				String oauth_token = tokenarr2[1];
+				tokenarr2 = tokenarr[1].split("=");
+				String oauth_token_secret = tokenarr2[1];
+				Common.setToken(fromJID, oauth_token, oauth_token_secret);
+			} catch (ArrayIndexOutOfBoundsException e) {
+				Common.sendMessage(fromJID, "未知错误，请重试");
+				return;
+			}
 
-			Common.setToken(fromJID, oauth_token, oauth_token_secret);
 		}
 		else
 		{
@@ -751,6 +776,11 @@ public class FantalkerServlet extends HttpServlet
 	}
 	
 	
+	/**
+	 * 执行-public 命令随便看看
+	 * @param fromJID
+	 * @throws IOException
+	 */
 	public void doPublic(JID fromJID) throws IOException
 	{
 		API api = Common.getAPI(fromJID);
@@ -809,7 +839,17 @@ public class FantalkerServlet extends HttpServlet
 		{
 			int intIndex = strMessage.lastIndexOf(msgarr[1]) + msgarr[1].length() + 1;
 			String replyMsg = strMessage.substring(intIndex);
-			response = api.statuses_reply(fromJID, replyMsg, msgarr[1]);
+			String id = msgarr[1];
+			if(id.length()<=2)
+			{
+				id = Common.shortID2ID(fromJID, id);
+				if(id == null)
+				{
+					Common.sendMessage(fromJID,"找不到该短ID对应的长ID,请重新输入或使用长ID");
+					return;
+				}
+			}
+			response = api.statuses_reply(fromJID, replyMsg, id);
 			if(response == null)
 			{
 				return;
@@ -909,7 +949,17 @@ public class FantalkerServlet extends HttpServlet
 				replyMsg = "";
 			}
 	
-			response = api.statuses_repost(fromJID, replyMsg, msgarr[1]);
+			String id = msgarr[1];
+			if(id.length()<=2)
+			{
+				id = Common.shortID2ID(fromJID, id);
+				if(id == null)
+				{
+					Common.sendMessage(fromJID,"找不到该短ID对应的长ID,请重新输入或使用长ID");
+					return;
+				}
+			}
+			response = api.statuses_repost(fromJID, replyMsg, id);
 			if(response.getResponseCode() == 200)
 			{
 				StatusJSON jsonStatus = new StatusJSON(new String(response.getContent()));

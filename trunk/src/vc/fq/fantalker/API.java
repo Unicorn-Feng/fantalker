@@ -18,7 +18,7 @@
  */
 
 /**
- * 饭否GTalk机器人API操作类
+ *饭否GTalk机器人 Fantalker
  *Fanfou Chat Robot for Google Talk
  *Author: 烽麒 Unicorn-Feng
  *Website: http://fq.vc 

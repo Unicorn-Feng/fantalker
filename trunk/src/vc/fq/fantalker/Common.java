@@ -28,9 +28,12 @@ package vc.fq.fantalker;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.GregorianCalendar;
+import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Logger;
 import javax.cache.CacheManager;
 import com.google.appengine.api.datastore.DatastoreService;
@@ -62,6 +65,38 @@ public final class Common
 {
 	public static final Logger log = Logger.getLogger("Fantalker");
 	
+	
+	/**
+	 * 分配短ID
+	 * @param id 消息ID
+	 * @param nextID 下一个欲分配短ID位置
+	 * @param ltShortID 短ID对应表List
+	 * @return
+	 */
+	public static List<String> allocShortID(String id, int nextID,List<String> ltShortID)
+	{
+		/* 分配短ID */
+		nextID = nextID % 100 ;
+		if(nextID == 0)
+		{
+			nextID = 1;
+		}
+		if(ltShortID.size() <= nextID)
+		{
+			ltShortID.add(id);
+			nextID++;
+			ltShortID.set(0,String.valueOf(nextID));
+		}
+		else
+		{
+			ltShortID.set(nextID, id);
+			nextID++;
+			ltShortID.set(0, String.valueOf(nextID));
+		}
+		return ltShortID;
+	}
+	
+	
 	/**
 	 * 获取API对象
 	 * @param fromJID
@@ -85,7 +120,7 @@ public final class Common
 		}
 	}
 
-
+	
 	/**
 	 * 从数据库中读取一个数据
 	 * @param fromJID 来源JID
@@ -97,24 +132,10 @@ public final class Common
 		String strJID = Common.getStrJID(fromJID);
 		
 		/* 从MemCache中读取数据 */
-		GCache cache;
-		try{
-			GCacheFactory cacheFactory = (GCacheFactory) CacheManager.getInstance().getCacheFactory();
-			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
-			if(!cache.isEmpty())
-			{
-				if(cache.containsKey(strJID + "," + strProperty))
-				{
-					String value;
-					value = (String) cache.get(strJID + "," + strProperty);
-					if(value.length()>=1)
-					{
-						return value;
-					}
-				}
-			}
-		} catch (javax.cache.CacheException e) {
-			log.info(strJID + ":JCache " + e.getMessage());
+		String memData = getMemData(strJID,strProperty);
+		if(memData != null)
+		{
+			return memData;
 		}
 		
 		/* 从Datastore中读取数据 */
@@ -139,14 +160,8 @@ public final class Common
 		}
 		
 		/* 将数据写入MemCache中 */
-		try{
-			GCacheFactory cacheFactory;
-			cacheFactory = (GCacheFactory) CacheManager.getInstance().getCacheFactory();
-			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
-			cache.put(strJID + "," + strProperty,strData);
-		} catch (javax.cache.CacheException e){
-			log.info(strJID + ":JCache " + e.getMessage());
-		}
+		setMemData(strJID,strProperty,strData);
+		
 		return strData;
 	}
 	
@@ -177,7 +192,6 @@ public final class Common
 			return error;
 			
 		} catch (JSONException e) {
-			//e.printStackTrace();
 			log.info("error.JSON " + e.getMessage());
 			return "未知错误";
 		}
@@ -192,6 +206,38 @@ public final class Common
 	public static String getID(JID fromJID)
 	{
 		return getData(fromJID,"id");
+	}
+
+
+	/**
+	 * 从MemCache中读取数据
+	 * @param strJID 字符串形式JID
+	 * @param strProperty 键值
+	 * @return
+	 */
+	public static String getMemData(String strJID, String strProperty)
+	{
+		GCache cache;
+		try{
+			GCacheFactory cacheFactory = (GCacheFactory) CacheManager.getInstance().getCacheFactory();
+			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
+			if(!cache.isEmpty())
+			{
+				if(cache.containsKey(strJID + "," + strProperty))
+				{
+					String value;
+					value = (String) cache.get(strJID + "," + strProperty);
+					if(value.length()>=1)
+					{
+						return value;
+					}
+				}
+			}
+		} catch (javax.cache.CacheException e) {
+			log.info(strJID + ":JCache " + e.getMessage());
+		}
+		return null;
+		
 	}
 
 
@@ -438,6 +484,26 @@ public final class Common
 
 	
 	/**
+	 * 将数据存储到MemCached
+	 * @param strJID 字符串形式JID
+	 * @param strProperty 键值
+	 * @param strData
+	 */
+	public static void setMemData(String strJID, String strProperty, String strData)
+	{
+		GCache cache;
+		try{
+			GCacheFactory cacheFactory;
+			cacheFactory = (GCacheFactory) CacheManager.getInstance().getCacheFactory();
+			cache = (GCache) cacheFactory.createCache(Collections.emptyMap());
+			cache.put(strJID + "," + strProperty,strData);
+		} catch (javax.cache.CacheException e){
+			log.info(strJID + ":JCache " + e.getMessage());
+		}
+	}
+
+
+	/**
 	 * 将用户设置存入datastore
 	 * @param fromJID
 	 * @param set Setting对象
@@ -521,6 +587,39 @@ public final class Common
 	
 	
 	/**
+	 * 根据短ID获取ID
+	 * @param fromJID
+	 * @param shortID
+	 * @return
+	 */
+	public static String shortID2ID(JID fromJID, String shortID)
+	{
+		String strJID = getStrJID(fromJID);
+		String strArrShortID = getMemData(strJID,"shortid");
+		if(!isNumeric(shortID))
+		{
+			return null;
+		}
+		if(strArrShortID == null)
+		{
+			return null;
+		}
+		int shortid = Integer.parseInt(shortID);
+		List<String> ltShortID = new ArrayList<String>();
+		String[] arrShortID = strArrShortID.split(",");
+		for(int j=0;j<arrShortID.length;j++)
+		{
+			ltShortID.add(arrShortID[j]);
+		}
+		try {
+			return ltShortID.get(shortid);
+		} catch (IndexOutOfBoundsException e) {
+			return null;
+		}
+	}
+	
+	
+	/**
 	 * xmpp中输出消息
 	 * @param fromJID 来源JID
 	 * @param jsonStatus StatusJSON对象
@@ -531,12 +630,38 @@ public final class Common
 	public static void showStatus(JID fromJID, StatusJSON[] jsonStatus, int intType, int length, String pageID)
 	{
 		String strMessage = null;
+		String strJID = getStrJID(fromJID);
+
+		/* 获取短ID数组 */
+		String strArrShortID = getMemData(strJID,"shortid");
+		List<String> ltShortID = new ArrayList<String>();
+		String id;
+		int shortid;
+		if(strArrShortID == null)
+		{
+			ltShortID.add("1");
+		}
+		else
+		{
+			String[] arrShortID;
+			arrShortID = strArrShortID.split(",");
+			for(int j=0;j<arrShortID.length;j++)
+			{
+				ltShortID.add(arrShortID[j]);
+			}
+		}
+		int nextID = Integer.parseInt(ltShortID.get(0));
+		
 		if(intType ==4)
 		{
 			strMessage = "";
 			for(int i=0;i<length;i++)
 			{
-				strMessage = Common.StatusMessage(strMessage,jsonStatus[i]);
+				id = jsonStatus[i].getID();
+				ltShortID = allocShortID(id,nextID,ltShortID);
+				nextID = Integer.parseInt(ltShortID.get(0));
+				shortid = ltShortID.lastIndexOf(id);
+				strMessage = Common.StatusMessage(strMessage,jsonStatus[i],shortid);
 			}
 		}
 		else
@@ -561,10 +686,25 @@ public final class Common
 					setData(fromJID,"mention","last_id",jsonStatus[0].getID());
 				}
 			}
+			
 			for(int i=(length-1);i>=0;i--)
 			{
-				strMessage = Common.StatusMessage(strMessage,jsonStatus[i]);
+				id = jsonStatus[i].getID();
+				ltShortID = allocShortID(id,nextID,ltShortID);
+				nextID = Integer.parseInt(ltShortID.get(0));
+				shortid = ltShortID.lastIndexOf(id);
+				strMessage = Common.StatusMessage(strMessage,jsonStatus[i],shortid);
 			}
+
+			/* 存储短ID */
+			Iterator<String> ir = ltShortID.iterator();
+			strArrShortID = "";
+			while(ir.hasNext())
+			{
+				strArrShortID = strArrShortID + ir.next() + ",";
+			}
+			strArrShortID = strArrShortID.substring(0,strArrShortID.length()-1);
+			setMemData(strJID,"shortid",strArrShortID);
 		}
 		sendMessage(fromJID,strMessage);
 	}
@@ -586,13 +726,14 @@ public final class Common
 	 * 构造xmpp消息
 	 * @param message 现有消息
 	 * @param jsonStatus 状态JSON对象
+	 * @param shortid 短ID
 	 * @return
 	 */
-	public static String StatusMessage(String message, StatusJSON jsonStatus)
+	public static String StatusMessage(String message, StatusJSON jsonStatus,int shortid)
 	{
 		UserJSON jsonUser = jsonStatus.getUserJSON();
 		message = message + "*" + jsonUser.getScreenName() + "*: " + jsonStatus.getText()
-					+ "\n [ " + jsonStatus.getID() + " ] " + getStrDate(jsonStatus.getCreatedAt())
+					+ "\n [ " + jsonStatus.getID() + " = " + String.valueOf(shortid) + " ] " + getStrDate(jsonStatus.getCreatedAt())
 					+ " <- " + getSource(jsonStatus.getSource()) + "\n\n";
 		return message;
 	}
