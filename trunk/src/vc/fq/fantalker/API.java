@@ -543,8 +543,8 @@ public class API
 		params = "POST&" + URLEncoder.encode(url.toString())
 					+ "&" + URLEncoder.encode(params);
 		params = params.replace("%257E", "~");
+		params = params.replace("%7E", "~");
 		String sig = generateSignature(params,oauth_token_secret);
-		
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);
 		request.addHeader(new HTTPHeader("Authorization",authorization));

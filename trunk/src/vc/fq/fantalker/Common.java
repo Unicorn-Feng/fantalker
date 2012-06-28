@@ -636,7 +636,6 @@ public final class Common
 		String strArrShortID = getMemData(strJID,"shortid");
 		List<String> ltShortID = new ArrayList<String>();
 		String id;
-		int shortid;
 		if(strArrShortID == null)
 		{
 			ltShortID.add("1");
@@ -660,8 +659,7 @@ public final class Common
 				id = jsonStatus[i].getID();
 				ltShortID = allocShortID(id,nextID,ltShortID);
 				nextID = Integer.parseInt(ltShortID.get(0));
-				shortid = ltShortID.lastIndexOf(id);
-				strMessage = Common.StatusMessage(strMessage,jsonStatus[i],shortid);
+				strMessage = Common.StatusMessage(strMessage,jsonStatus[i],nextID-1);
 			}
 		}
 		else
@@ -692,8 +690,7 @@ public final class Common
 				id = jsonStatus[i].getID();
 				ltShortID = allocShortID(id,nextID,ltShortID);
 				nextID = Integer.parseInt(ltShortID.get(0));
-				shortid = ltShortID.lastIndexOf(id);
-				strMessage = Common.StatusMessage(strMessage,jsonStatus[i],shortid);
+				strMessage = Common.StatusMessage(strMessage,jsonStatus[i],nextID-1);
 			}
 
 			/* 存储短ID */
