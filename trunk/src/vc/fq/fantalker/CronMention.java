@@ -36,6 +36,8 @@ import com.google.appengine.api.datastore.Entity;
 import com.google.appengine.api.datastore.Key;
 import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.Query;
+import com.google.appengine.api.datastore.Query.Filter;
+import com.google.appengine.api.datastore.Query.FilterPredicate;
 import com.google.appengine.api.urlfetch.HTTPResponse;
 import com.google.appengine.api.xmpp.JID;
 import com.google.appengine.api.xmpp.XMPPFailureException;
@@ -58,7 +60,8 @@ public class CronMention extends HttpServlet
 	{
 		DatastoreService datastore = DatastoreServiceFactory.getDatastoreService();
 		Query q = new Query("setting");
-		q.addFilter("mention", Query.FilterOperator.EQUAL, true);
+		Filter filter = new FilterPredicate("mention",Query.FilterOperator.EQUAL,true);
+		q.setFilter(filter);
 		PreparedQuery pq = datastore.prepare(q);
 		for (Entity result : pq.asIterable()) 
 		{
