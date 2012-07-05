@@ -27,6 +27,7 @@
 package vc.fq.fantalker;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Collections;
@@ -644,8 +645,13 @@ public class FantalkerServlet extends HttpServlet
 			HTTPRequest request = new HTTPRequest(url,HTTPMethod.GET);
 			request.addHeader(new HTTPHeader("Authorization",authorization));
 			URLFetchService service = URLFetchServiceFactory.getURLFetchService();
-			HTTPResponse response = service.fetch(request);
-			
+			HTTPResponse response;
+			try {
+				response = service.fetch(request);
+			} catch (SocketTimeoutException e) {
+				Common.sendMessage(fromJID, "连接饭否超时，请重试");
+				return;
+			}
 			if(response.getResponseCode() != 200)
 			{
 				String errMsg = "出现错误，请重试";
@@ -699,7 +705,13 @@ public class FantalkerServlet extends HttpServlet
 			HTTPRequest request = new HTTPRequest(url,HTTPMethod.GET);
 			request.addHeader(new HTTPHeader("Authorization",authorization));
 			URLFetchService service = URLFetchServiceFactory.getURLFetchService();
-			HTTPResponse response = service.fetch(request);
+			HTTPResponse response;
+			try {
+				response = service.fetch(request);
+			} catch (SocketTimeoutException e) {
+				Common.sendMessage(fromJID, "连接饭否超时，请重试");
+				return;
+			}
 			
 			if(response.getResponseCode() == 200)
 			{

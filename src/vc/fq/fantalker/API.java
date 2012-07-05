@@ -482,7 +482,7 @@ public class API
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.show
 	 */
 	@SuppressWarnings("deprecation")
-	public HTTPResponse statuses_show(JID fromJID, String id) throws IOException,SocketTimeoutException,SocketTimeoutException 
+	public HTTPResponse statuses_show(JID fromJID, String id) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
@@ -583,12 +583,13 @@ public class API
 		long timestamp = System.currentTimeMillis() / 1000;
 		long nonce = System.nanoTime();
 		String strURL = "http://api.fanfou.com/statuses/user_timeline.json";
-	
-		String params = generateParams(timestamp,nonce);
+		String params = "";
 		if(userID != null)
 		{
-			params = params + "&id=" + userID;
+			params = "id=" + userID + "&";
 		}
+		params = params + generateParams(timestamp,nonce);
+
 		if(pageID != null)
 		{
 			params = params + "&page=" + pageID;
@@ -596,10 +597,11 @@ public class API
 		
 		params = "GET&" + URLEncoder.encode(strURL)
 					+ "&" + URLEncoder.encode(params);
+
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request;
-		
+
 		if(userID == null && pageID == null)
 		{
 			request = new HTTPRequest(new URL(strURL),HTTPMethod.GET);
