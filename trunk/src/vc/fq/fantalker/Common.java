@@ -770,8 +770,9 @@ public final class Common
 		}
 		else
 		{
+			String err = getError(new String(response.getContent()));
 			log.warning("status.show " + new String(response.getContent()));
-			sendMessage(fromJID,"未知错误");
+			sendMessage(fromJID, err);
 		}
 	}
 	
