@@ -76,7 +76,6 @@ public class API
 	 * @throws IOException 
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/account.verify-credentials
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse account_verify_credentials(JID fromJID) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -84,8 +83,8 @@ public class API
 		URL url = new URL("http://api.fanfou.com/account/verify_credentials.json");
 
 		String params = generateParams(timestamp,nonce);
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+		params = "GET&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request = new HTTPRequest(url,HTTPMethod.GET);
@@ -95,7 +94,107 @@ public class API
 		return response;
 	}
 	
+	
+	/**
+	 * 调用 GET /favorites 浏览收藏消息
+	 * @param fromJID 来源JID
+	 * @param pageID 指定返回结果的页码
+	 * @return HTTPResponse 包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/favorites
+	 */
+	public HTTPResponse favorites(JID fromJID, String pageID) throws IOException,SocketTimeoutException 
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		URL url = new URL("http://api.fanfou.com/favorites/id.json");
+	
+		String params = generateParams(timestamp,nonce);
+		if(pageID != null)
+		{
+			params = params + "&page=" + pageID;
+		}
+		
+		params = "GET&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
+		String sig = generateSignature(params,oauth_token_secret);
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request;
+		if(pageID == null)
+		{
+			request = new HTTPRequest(url,HTTPMethod.GET);
+		}
+		else
+		{
+			request = new HTTPRequest(new URL(url.toString() + "?page=" + pageID),HTTPMethod.GET);
+		}
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		return response;
+	}
+	
+	
+	/**
+	 * 调用 GET /favorites 浏览收藏消息
+	 * @param fromJID 来源JID
+	 * @return 包含json
+	 * @throws IOException
+	 * @throws SocketTimeoutException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/favorites
+	 */
+	public HTTPResponse favorites(JID fromJID) throws IOException,SocketTimeoutException 
+	{
+		return favorites(fromJID,null);
+	}
+	
+	
+	/**
+	 * 调用POST /favorites/create(destroy) 添加/删除收藏
+	 * @param fromJID
+	 * @param id 指定需要添加/删除收藏的消息id
+	 * @param fav 收藏或取消收藏
+	 * @return HTTPResponse，包含json
+	 * @throws IOException
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/favorites.create
+	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/favorites.destroy
+	 */
+	public HTTPResponse favorites_create_destroy(JID fromJID, String id, boolean fav) throws IOException,SocketTimeoutException 
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		
+		URL url;
+		if(fav)
+		{
+			url = new URL("http://api.fanfou.com/statuses/favorites/create/" + id + ".json");
+		}
+		else
+		{
+			url = new URL("http://api.fanfou.com/statuses/favorites/destroy/id.json");
+		}
+		
+		String params;
+		params = "id=" + id + "&" + generateParams(timestamp,nonce);
+		//params = generateParams(timestamp,nonce);
+		params = "POST&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
+		String sig = generateSignature(params,oauth_token_secret);
+		System.out.println(params);
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		request.addHeader(new HTTPHeader("Content-Type","application/x-www-form-urlencoded"));
 
+		String strPayload = "id=" + id;
+		request.setPayload(strPayload.getBytes());
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		
+		return response;
+	}
+	
+	
 	/**
 	 * 调用POST /friendships/create(destroy) 添加/删除用户为好友
 	 * @param fromJID
@@ -105,7 +204,6 @@ public class API
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/friendships.create
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/friendships.destroy
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse friendships_create_destroy(JID fromJID, String id, boolean fo) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -123,8 +221,8 @@ public class API
 		
 		String params;
 		params = "id=" + id + "&" + generateParams(timestamp,nonce);
-		params = "POST&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+		params = "POST&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 		String sig = generateSignature(params,oauth_token_secret);
 		
 		String authorization = generateAuthString(timestamp, nonce, sig);
@@ -188,7 +286,6 @@ public class API
 	 * @throws IOException
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.context-timeline
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse statuses_context_timeline(JID fromJID, String id) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -197,8 +294,8 @@ public class API
 
 		String params = null;
 		params = "id=" + id	+ "&" + generateParams(timestamp,nonce);
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+		params = "GET&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request;
@@ -218,7 +315,6 @@ public class API
 	 * @throws IOException
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.destroy
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse statuses_destroy(JID fromJID, String id) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -227,8 +323,8 @@ public class API
 		
 		String params = null;
 		params = "id=" + id + "&" + generateParams(timestamp,nonce);
-		params = "POST&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+		params = "POST&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 		String sig = generateSignature(params,oauth_token_secret);
 		
 		String authorization = generateAuthString(timestamp, nonce, sig);
@@ -253,7 +349,6 @@ public class API
 	 * @throws IOException
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.home-timeline
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse statuses_home_timeline(JID fromJID, String pageID) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -266,8 +361,8 @@ public class API
 			params = params + "&page=" + pageID;
 		}
 		
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+		params = "GET&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request;
@@ -308,7 +403,6 @@ public class API
 	 * @throws IOException 
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.mentions
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse statuses_mentions(JID fromJID, String pageID, String since_id) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -324,8 +418,8 @@ public class API
 		{
 			params = params + "&since_id=" + since_id;
 		}
-		params = "GET&" + URLEncoder.encode(strurl)
-				+ "&" + URLEncoder.encode(params);
+		params = "GET&" + URLEncoder.encode(strurl,"UTF-8")
+				+ "&" + URLEncoder.encode(params,"UTF-8");
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request;
@@ -380,7 +474,6 @@ public class API
 	 * @return
 	 * @throws IOException
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse statuses_public_timeline(JID fromJID) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -388,8 +481,8 @@ public class API
 		URL url = new URL("http://api.fanfou.com/statuses/public_timeline.json");
 	
 		String params = generateParams(timestamp,nonce);
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+		params = "GET&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request;
@@ -481,7 +574,6 @@ public class API
 	 * @throws IOException 
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.show
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse statuses_show(JID fromJID, String id) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -490,8 +582,8 @@ public class API
 
 		String params = null;
 		params = "id=" + id	+ "&" + generateParams(timestamp,nonce);
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+		params = "GET&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request;
@@ -514,7 +606,6 @@ public class API
 	 * @throws IOException
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.update
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse statuses_update(JID fromJID, String strMessage, String replyID, String userID, String repostID) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -538,10 +629,10 @@ public class API
 		{
 			params = params + "&repost_status_id=" + repostID;
 		}
-		params = params + "&status=" + URLEncoder.encode(strMessage,"GB2312").replaceAll("\\+","%20");
+		params = params + "&status=" + URLEncoder.encode(strMessage,"UTF-8").replaceAll("\\+","%20");
 		
-		params = "POST&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+		params = "POST&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 		params = params.replace("%257E", "~");
 		params = params.replace("%7E", "~");
 		String sig = generateSignature(params,oauth_token_secret);
@@ -551,7 +642,7 @@ public class API
 		request.addHeader(new HTTPHeader("Content-Type","application/x-www-form-urlencoded"));
 		
 		String strPayload;
-		strPayload = "status=" + URLEncoder.encode(strMessage,"GB2312");
+		strPayload = "status=" + URLEncoder.encode(strMessage,"UTF-8");
 		if(replyID != null && userID != null)
 		{
 			strPayload = strPayload + "&in_reply_to_status_id=" + replyID + "&in_reply_to_user_id=" + userID;
@@ -577,7 +668,6 @@ public class API
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/statuses.user-timeline
 	 * @throws IOException
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse statuses_user_timeline(JID fromJID, String userID, String pageID) throws IOException
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -595,8 +685,8 @@ public class API
 			params = params + "&page=" + pageID;
 		}
 		
-		params = "GET&" + URLEncoder.encode(strURL)
-					+ "&" + URLEncoder.encode(params);
+		params = "GET&" + URLEncoder.encode(strURL,"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
@@ -662,7 +752,6 @@ public class API
 	 * @throws IOException 
 	 * @see https://github.com/FanfouAPI/FanFouAPIDoc/wiki/users.show
 	 */
-	@SuppressWarnings("deprecation")
 	public HTTPResponse users_show(JID fromJID, String id) throws IOException,SocketTimeoutException 
 	{
 		long timestamp = System.currentTimeMillis() / 1000;
@@ -671,8 +760,8 @@ public class API
 	
 		String params = null;
 		params = "id=" + id + "&" + generateParams(timestamp,nonce);
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+		params = "GET&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request = new HTTPRequest(new URL(url.toString() + "?id=" + id),HTTPMethod.GET);
@@ -692,10 +781,10 @@ public class API
      * @param data the data to be signed
      * @param access token secret
      * @return signature
+     * @throws UnsupportedEncodingException 
      * @see <a href="http://oauth.net/core/1.0/#rfc.section.9.2.1">OAuth Core - 9.2.1.  Generating Signature</a>
      */
-    @SuppressWarnings("deprecation")
-	public static String generateSignature(String data,String token) 
+	public static String generateSignature(String data,String token) throws UnsupportedEncodingException 
     {
         byte[] byteHMAC = null;
         try {
@@ -718,11 +807,11 @@ public class API
         } catch (NoSuchAlgorithmException ignore) {
             // should never happen
         }
-        return URLEncoder.encode(BASE64Encoder.encode(byteHMAC));
+        return URLEncoder.encode(BASE64Encoder.encode(byteHMAC),"UTF-8");
     }
     
     
-    public static String generateSignature(String data)
+    public static String generateSignature(String data) throws UnsupportedEncodingException
     {
     	return generateSignature(data,null);
     }

@@ -676,6 +676,10 @@ public final class Common
 			{
 				strMessage = "已发消息: 第" + pageID + "页\n\n";
 			}
+			else if(intType == 7)
+			{
+				strMessage = "收藏的消息: 第" + pageID + "页\n\n";
+			}
 			else
 			{
 				strMessage = "提到我的: 第" + pageID + "页\n\n";
@@ -740,7 +744,7 @@ public final class Common
 	 * 处理显示状态的HTTPResponse对象
 	 * @param fromJID
 	 * @param response
-	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看,6已发消息
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看,6已发消息,7收藏
 	 * @param pageID 页码
 	 */
 	public static void StatusShowResp(JID fromJID, HTTPResponse response, int intType, String pageID)
