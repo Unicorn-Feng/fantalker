@@ -158,6 +158,9 @@ public class FantalkerServlet extends HttpServlet
 			case 17:															//-timeline
 				doTimeLine(fromJID,msgarr);
 				break;
+			case 18:															//-fav
+				doFavorite(fromJID,msgarr,true);
+				break;
 			case -1:															//未知命令
 			default:
 				Common.sendMessage(fromJID,"无效命令");
@@ -173,7 +176,6 @@ public class FantalkerServlet extends HttpServlet
 	 * @param msgarr 输入字符串数组
 	 * @throws IOException 
 	 */
-	@SuppressWarnings("deprecation")
 	public void doBind(JID fromJID, String[] msgarr) throws IOException
 	{
 		if(isOauth(fromJID))													//判断是否已绑定
@@ -216,8 +218,8 @@ public class FantalkerServlet extends HttpServlet
 					+ "&oauth_token=" + oauth_token
 					+ "&oauth_verifier=" + strPIN;
 		
-		params = "GET&" + URLEncoder.encode(url.toString())
-					+ "&" + URLEncoder.encode(params);
+		params = "GET&" + URLEncoder.encode(url.toString(),"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
 		String sig = API.generateSignature(params);
 		
 		String authorization = null;
@@ -322,7 +324,77 @@ public class FantalkerServlet extends HttpServlet
 		Common.sendMessage(fromJID,strmessage);
 	}
 
+	
+	/**
+	 * 执行-fav/-unfav 收藏消息或查看已收藏消息
+	 * @param fromJID
+	 * @param msgarr
+	 * @throws IOException 
+	 */
+	public void doFavorite(JID fromJID, String[] msgarr, boolean fav)
+	{
+		API api = Common.getAPI(fromJID);
+		if(api == null)
+		{
+			Common.sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
+			return;
+		}
+		HTTPResponse response;
+		if(msgarr.length == 1)
+		{
+			if(fav == true)														//-fav
+			{
+				try {
+					response = api.favorites(fromJID);
+					Common.StatusShowResp(fromJID, response,7);
+				} catch (SocketTimeoutException e) {
+					Common.sendMessage(fromJID, "连接饭否API超时，请重试");
+					return;
+				} catch (IOException e) {
+					Common.sendMessage(fromJID, "连接饭否API时出错，请重试");
+					return;
+				}
+			}
+			else																//-unfav
+			{
+				doHelp(fromJID,"unfav");
+				return;
+			}
+		}
+		else if(msgarr.length == 2)
+		{
+			if(fav == true)
+			{
+				if(msgarr[1].charAt(0) == 'p' || msgarr[1].charAt(0) == 'P')
+				{
+					if(Common.isNumeric(msgarr[1].substring(1)))				//-fav p2
+					{
+						try {
+							msgarr[1] = msgarr[1].substring(1);
+							response = api.favorites(fromJID, msgarr[1]);
+							Common.StatusShowResp(fromJID, response, 7, msgarr[1]);
+							return;
+						} catch (SocketTimeoutException e) {
+							Common.sendMessage(fromJID, "连接饭否API超时，请重试");
+							return;
+						} catch (IOException e) {
+							Common.sendMessage(fromJID, "连接饭否API时出错，请重试");
+							return;
+						}
+					}
+				}
+			}
+			
+			doHelp(fromJID,"fav");
+			return;
+		}
+		else
+		{
+			doHelp(fromJID,"fav");
+		}
+	}
 
+	
 	/**
 	 * 执行-fo/-unfo关注好友
 	 * @param fromJID
@@ -392,6 +464,7 @@ public class FantalkerServlet extends HttpServlet
 					+ "-rt：转发消息\n"
 					+ "-m/-msg： 查看指定消息的上下文\n"
 					+ "-del/-delete： 删除指定消息\n"
+					+ "-fav/-favorite： 查看已收藏消息\n"
 					+ "-u： 查看用户信息\n"
 					+ "-fo/-follow： 加指定用户为好友\n"
 					+ "-unfo/-unfollow： 删除指定好友\n"
@@ -468,9 +541,13 @@ public class FantalkerServlet extends HttpServlet
 				break;
 			case 17:															//-tl
 				helpMsg = "用法1: -timeline/-tl [p页码]\n"
-						+ "显示当前用户已发送的消息，页码可选\n命令如-@ p2\n"
+						+ "显示当前用户已发送的消息，页码可选\n命令如-tl p2\n"
 						+ "用法2: -timeline/-tl 用户ID [p页码]\n"
 						+ "显示用户ID所指定的用户已发送的消息，页码可选\n";
+				break;
+			case 18:															//-fav
+				helpMsg = "用法: -favorite/-fav [p页码]\n"
+						+ "查看已收藏的消息，页码可选\n命令如-fav p2\n";
 				break;
 			case -1:															//未知命令
 			default:
@@ -606,7 +683,6 @@ public class FantalkerServlet extends HttpServlet
 	 * @param msgarr
 	 * @throws IOException
 	 */
-	@SuppressWarnings("deprecation")
 	public void doOauth(JID fromJID, String[] msgarr) throws IOException
 	{
 		if(isOauth(fromJID))													//判断是否已绑定
@@ -629,8 +705,8 @@ public class FantalkerServlet extends HttpServlet
 						+ "&oauth_signature_method=HMAC-SHA1"
 						+ "&oauth_timestamp=" + String.valueOf(timestamp);
 		
-			params = "GET&" + URLEncoder.encode(url.toString())
-						+ "&" + URLEncoder.encode(params);
+			params = "GET&" + URLEncoder.encode(url.toString(),"UTF-8")
+						+ "&" + URLEncoder.encode(params,"UTF-8");
 			String sig = API.generateSignature(params);
 					
 			StringBuffer strBuf = new StringBuffer(250); 
@@ -688,8 +764,8 @@ public class FantalkerServlet extends HttpServlet
 					+ "&x_auth_password=" + password
 					+ "&x_auth_mode=client_auth";
 		
-			params = "GET&" + URLEncoder.encode(url.toString())
-						+ "&" + URLEncoder.encode(params);
+			params = "GET&" + URLEncoder.encode(url.toString(),"UTF-8")
+						+ "&" + URLEncoder.encode(params,"UTF-8");
 			String sig = API.generateSignature(params);
 			
 			authorization = "OAuth realm=\"Fantalker\",oauth_consumer_key=\"" + API.consumer_key
@@ -1217,6 +1293,8 @@ public class FantalkerServlet extends HttpServlet
 			return 16;
 		else if(strCmd.equals("-timeline") || strCmd.equals("-tl"))				//显示指定用户已发送消息
 			return 17;
+		else if(strCmd.equals("-favorite") || strCmd.equals("-fav"))			//收藏消息
+			return 18;
 		else																	//未知命令
 			return -1;
 	}
