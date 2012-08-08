@@ -161,6 +161,12 @@ public class FantalkerServlet extends HttpServlet
 			case 18:															//-fav
 				doFavorite(fromJID,msgarr,true);
 				break;
+			//case 19:															//-unfav
+				//doFavorite(fromJID,msgarr,false);
+				//break;
+			case 20:															//-search
+				doSearch(fromJID,msgarr);
+				break;
 			case -1:															//未知命令
 			default:
 				Common.sendMessage(fromJID,"无效命令");
@@ -387,10 +393,68 @@ public class FantalkerServlet extends HttpServlet
 			
 			doHelp(fromJID,"fav");
 			return;
+			
+			/* -fav 消息ID 或 -unfav 消息ID */
+			/*
+			String id = msgarr[1];
+			if(id.length()<=2)
+			{
+				id = Common.shortID2ID(fromJID, id);
+				if(id == null)
+				{
+					Common.sendMessage(fromJID,"找不到该短ID对应的长ID,请重新输入或使用长ID");
+					return;
+				}
+			}
+			try {
+				response = api.favorites_create_destroy(fromJID, id, fav);
+				String strMessage;
+				if(response.getResponseCode() == 200)
+				{
+					StatusJSON jsonstatus = new StatusJSON(new String(response.getContent()));
+					if(fav == true)
+					{
+						strMessage = "成功收藏 : " + jsonstatus.getText();
+					}
+					else
+					{
+						strMessage = "成功取消收藏: " + jsonstatus.getText();
+					}
+				}
+				else if(response.getResponseCode() == 403)
+				{
+					strMessage = "你没有通过这个用户的验证,无法收藏TA的消息";
+				}
+				else if(response.getResponseCode() == 404)
+				{
+					strMessage = "找不到该消息";
+				}
+				else
+				{
+					strMessage = Common.getError(new String(response.getContent()));
+					System.out.println(new String(response.getContent()));
+					System.out.println(response.getResponseCode());
+				}
+				Common.sendMessage(fromJID, strMessage);
+			} catch (SocketTimeoutException e) {
+				Common.sendMessage(fromJID, "连接饭否API时超时,请重试");
+				return;
+			} catch (IOException e) {
+				Common.sendMessage(fromJID, "连接饭否API时出错，请重试");
+				return;
+			}
+			*/
 		}
 		else
 		{
-			doHelp(fromJID,"fav");
+			if(fav == true)
+			{
+				doHelp(fromJID,"fav");
+			}
+			else
+			{
+				doHelp(fromJID,"unfav");
+			}
 		}
 	}
 
@@ -465,6 +529,8 @@ public class FantalkerServlet extends HttpServlet
 					+ "-m/-msg： 查看指定消息的上下文\n"
 					+ "-del/-delete： 删除指定消息\n"
 					+ "-fav/-favorite： 查看已收藏消息\n"
+					//+ "-unfav/-unfavorite： 取消收藏指定消息\n"
+					+ "-s/-search： 搜索指定消息\n"
 					+ "-u： 查看用户信息\n"
 					+ "-fo/-follow： 加指定用户为好友\n"
 					+ "-unfo/-unfollow： 删除指定好友\n"
@@ -548,6 +614,15 @@ public class FantalkerServlet extends HttpServlet
 			case 18:															//-fav
 				helpMsg = "用法: -favorite/-fav [p页码]\n"
 						+ "查看已收藏的消息，页码可选\n命令如-fav p2\n";
+						//+ "用法2: -favorite/-fav 消息ID\n"
+						//+ "收藏指定消息，消息ID可为长ID也可为短ID\n";
+				break;
+			//case 19:															//-unfav
+				//helpMsg = "用法: -unfavorite/-unfav 消息ID\n取消收藏指定消息，消息ID可为长ID也可为短ID\n";
+				//break;
+			case 20:															//-search
+				helpMsg = "用法: -s/-search 关键词\n"
+						+ "搜索含指定关键词的消息，多个关键词用|分隔\n";
 				break;
 			case -1:															//未知命令
 			default:
@@ -1091,6 +1166,46 @@ public class FantalkerServlet extends HttpServlet
 	
 	
 	/**
+	 * 执行-search搜索指定消息
+	 * @param fromJID
+	 * @param msgarr
+	 */
+	public void doSearch(JID fromJID, String[] msgarr)
+	{
+		API api = Common.getAPI(fromJID);
+		if(api == null)
+		{
+			Common.sendMessage(fromJID,"您尚未绑定账号，请使用-oauth命令绑定");
+			return;
+		}
+		if(msgarr.length < 2)
+		{
+			doHelp(fromJID,"search");
+			return;
+		}
+		
+		String keyword = "";
+		for(int i=1;i<msgarr.length;i++)
+		{
+			keyword = keyword + msgarr[i] + " ";
+		}
+		keyword = keyword.substring(0,keyword.length()-1);
+		
+		HTTPResponse response;
+		try {
+			response = api.search_public_timeline(fromJID, keyword);
+			Common.StatusShowResp(fromJID, response,8,null,keyword);
+		} catch (SocketTimeoutException e) {
+			Common.sendMessage(fromJID, "连接饭否API超时，请重试");
+			return;
+		} catch (IOException e) {
+			Common.sendMessage(fromJID, "连接饭否API时出错，请重试");
+			return;
+		}
+	}
+	
+	
+	/**
 	 * 执行-time 命令设置定时提醒间隔
 	 * @param fromJID
 	 * @param msgarr
@@ -1295,6 +1410,10 @@ public class FantalkerServlet extends HttpServlet
 			return 17;
 		else if(strCmd.equals("-favorite") || strCmd.equals("-fav"))			//收藏消息
 			return 18;
+		else if(strCmd.equals("-unfavorite") || strCmd.equals("-unfav"))		//取消收藏消息
+			return 19;
+		else if(strCmd.equals("-s") || strCmd.equals("-search"))				//搜索消息
+			return 20;
 		else																	//未知命令
 			return -1;
 	}
