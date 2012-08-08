@@ -277,7 +277,38 @@ public class API
 		return strBuf.toString();
 	}
 
+	
+	/**
+	 * 调用GET /search/public_timeline 搜索全站消息
+	 * @param fromJID
+	 * @param query_word 搜索关键词，多个关键词用|分割
+	 * @return
+	 * @throws SocketTimeoutException
+	 * @throws IOException
+	 */
+	public HTTPResponse search_public_timeline(JID fromJID, String query_word) throws SocketTimeoutException,IOException
+	{
+		long timestamp = System.currentTimeMillis() / 1000;
+		long nonce = System.nanoTime();
+		String strURL = "http://api.fanfou.com/search/public_timeline.json";
 
+		String params = null;
+		params = generateParams(timestamp,nonce) + "&q=" + URLEncoder.encode(query_word,"UTF-8");
+		params = "GET&" + URLEncoder.encode(strURL,"UTF-8")
+					+ "&" + URLEncoder.encode(params,"UTF-8");
+		params = Common.replaceEncode(params);
+		
+		String sig = generateSignature(params,oauth_token_secret);
+		String authorization = generateAuthString(timestamp, nonce, sig);
+		HTTPRequest request;
+		request = new HTTPRequest(new URL(strURL + "?q=" + URLEncoder.encode(query_word,"UTF-8")),HTTPMethod.GET);
+		request.addHeader(new HTTPHeader("Authorization",authorization));
+		URLFetchService service = URLFetchServiceFactory.getURLFetchService();
+		HTTPResponse response = service.fetch(request);
+		return response;
+	}
+
+	
 	/**
 	 * 调用GET /statuses/context_timeline 按照时间先后顺序显示消息上下文
 	 * @param fromJID 来源JID
@@ -633,8 +664,8 @@ public class API
 		
 		params = "POST&" + URLEncoder.encode(url.toString(),"UTF-8")
 					+ "&" + URLEncoder.encode(params,"UTF-8");
-		params = params.replace("%257E", "~");
-		params = params.replace("%7E", "~");
+		params = Common.replaceEncode(params);
+		
 		String sig = generateSignature(params,oauth_token_secret);
 		String authorization = generateAuthString(timestamp, nonce, sig);
 		HTTPRequest request = new HTTPRequest(url,HTTPMethod.POST);

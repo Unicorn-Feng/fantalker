@@ -398,6 +398,17 @@ public final class Common
 	}
 
 	
+	public static String replaceEncode(String params)
+	{
+		params = params.replace("%7C", "%257C");
+		params = params.replace("+", "%25%20");
+		params = params.replace("%2B", "%2520");
+		params = params.replace("*", "%252A");
+		params = params.replace("%257E", "~");
+		params = params.replace("%7E", "~");
+		return params;
+	}
+	
 	/**
 	 * 向指定JID发送xmpp消息
 	 * @param fromJID 来源JID
@@ -623,11 +634,12 @@ public final class Common
 	 * xmpp中输出消息
 	 * @param fromJID 来源JID
 	 * @param jsonStatus StatusJSON对象
-	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看,6已发消息
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看,6已发消息,7收藏,8搜索
 	 * @param pageID 页码
 	 * @param lenght jsonStatus数组长度
+	 * @param keyword 搜索关键词
 	 */
-	public static void showStatus(JID fromJID, StatusJSON[] jsonStatus, int intType, int length, String pageID)
+	public static void showStatus(JID fromJID, StatusJSON[] jsonStatus, int intType, int length, String pageID, String keyword)
 	{
 		String strMessage = null;
 		String strJID = getStrJID(fromJID);
@@ -680,6 +692,10 @@ public final class Common
 			{
 				strMessage = "收藏的消息: 第" + pageID + "页\n\n";
 			}
+			else if(intType == 8)
+			{
+				strMessage = "搜索含 " + keyword + " 的消息\n\n";
+			}
 			else
 			{
 				strMessage = "提到我的: 第" + pageID + "页\n\n";
@@ -715,11 +731,25 @@ public final class Common
 	 * xmpp中输出消息
 	 * @param fromJID 来源JID
 	 * @param jsonStatus StatusJSON对象
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看,6已发消息,7收藏,8搜索
+	 * @param pageID 页码
+	 * @param lenght jsonStatus数组长度
+	 */
+	public static void showStatus(JID fromJID, StatusJSON[] jsonStatus, int intType, int length, String pageID)
+	{
+		showStatus(fromJID,jsonStatus,intType,length,pageID,null);
+	}
+	
+	
+	/**
+	 * xmpp中输出消息
+	 * @param fromJID 来源JID
+	 * @param jsonStatus StatusJSON对象
 	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文
 	 */
 	public static void showStatus(JID fromJID, StatusJSON[] jsonStatus, int intType, int length)
 	{
-		showStatus(fromJID,jsonStatus,intType,length,"1");
+		showStatus(fromJID,jsonStatus,intType,length,"1",null);
 	}
 	
 	
@@ -736,18 +766,20 @@ public final class Common
 		message = message + "*" + jsonUser.getScreenName() + "*: " + jsonStatus.getText()
 					+ "\n [ " + jsonStatus.getID() + " = " + String.valueOf(shortid) + " ] " + getStrDate(jsonStatus.getCreatedAt())
 					+ " <- " + getSource(jsonStatus.getSource()) + "\n\n";
+		message = message.replace("&lt;strong&gt;", "");
+		message = message.replace("&lt;/strong&gt;", "");
 		return message;
 	}
-
-
+	
 	/**
 	 * 处理显示状态的HTTPResponse对象
 	 * @param fromJID
 	 * @param response
-	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看,6已发消息,7收藏
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看,6已发消息,7收藏,8搜索
 	 * @param pageID 页码
+	 * @param keyword 搜索关键词
 	 */
-	public static void StatusShowResp(JID fromJID, HTTPResponse response, int intType, String pageID)
+	public static void StatusShowResp(JID fromJID, HTTPResponse response, int intType, String pageID, String keyword)
 	{
 		if(response.getResponseCode() == 200)
 		{
@@ -767,7 +799,14 @@ public final class Common
 				{
 					jsonStatus[i] = new StatusJSON(jsonarr.getJSONObject(i));
 				}
-				showStatus(fromJID,jsonStatus,intType,arrlen,pageID);
+				if(intType == 8)
+				{
+					showStatus(fromJID,jsonStatus,8,arrlen,null,keyword);
+				}
+				else
+				{
+					showStatus(fromJID,jsonStatus,intType,arrlen,pageID);
+				}
 			} catch (JSONException e) {
 				log.info("status.show.JSON " + e.getMessage());
 			}
@@ -783,10 +822,22 @@ public final class Common
 	
 	/**
 	 * 处理显示状态的HTTPResponse对象
+	 * @param fromJID
+	 * @param response
+	 * @param intType 消息类型,1时间线,2提到我的,3mention提醒,4消息上下文,5随便看看,6已发消息,7收藏,8搜索
+	 * @param pageID 页码
+	 */
+	public static void StatusShowResp(JID fromJID, HTTPResponse response, int intType, String pageID)
+	{
+		StatusShowResp(fromJID,response,intType,pageID,null);
+	}
+	
+	/**
+	 * 处理显示状态的HTTPResponse对象
 	 */
 	public static void StatusShowResp(JID fromJID, HTTPResponse response, int intType)
 	{
-		StatusShowResp(fromJID,response,intType,"1");
+		StatusShowResp(fromJID,response,intType,"1",null);
 	}
 	
 }
